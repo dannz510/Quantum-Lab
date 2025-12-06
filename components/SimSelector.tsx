@@ -1,10 +1,11 @@
 
 import React, { useState } from 'react';
 import { ArrowLeft, Play, Lock, Film, Activity, Waves, Zap, Magnet, Orbit, Triangle, Droplets, Radio, MoveHorizontal, AlignCenter, Globe, SortAsc } from 'lucide-react';
-import { AppMode, SimulationStats } from '../types';
+import { AppMode, SimulationStats, Language } from '../types';
 
 interface SimSelectorProps {
   setMode: (mode: AppMode) => void;
+  lang: Language;
 }
 
 const SIMULATIONS: SimulationStats[] = [
@@ -147,8 +148,7 @@ const SIMULATIONS: SimulationStats[] = [
   }
 ];
 
-export const SimSelector: React.FC<SimSelectorProps> = ({ setMode }) => {
-  const [lang, setLang] = useState<'en' | 'vi'>('en');
+export const SimSelector: React.FC<SimSelectorProps> = ({ setMode, lang }) => {
   const [sortBy, setSortBy] = useState<'difficulty' | 'category' | 'name'>('difficulty');
 
   const handleSelect = (id: string) => {
@@ -228,15 +228,6 @@ export const SimSelector: React.FC<SimSelectorProps> = ({ setMode }) => {
                  <option value="name">{t('Name', 'Tên')}</option>
               </select>
            </div>
-
-           {/* Language Toggle */}
-           <button 
-             onClick={() => setLang(lang === 'en' ? 'vi' : 'en')}
-             className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-lg border border-slate-700 transition-colors"
-           >
-             <Globe size={16} className="text-blue-400" />
-             <span className="text-sm font-bold">{lang === 'en' ? 'EN' : 'VI'}</span>
-           </button>
         </div>
       </div>
 

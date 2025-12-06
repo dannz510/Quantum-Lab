@@ -1,18 +1,36 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Waves, Radio } from 'lucide-react';
-import { AppMode } from '../types';
+import { Settings, Waves, Radio, Loader2, Sparkles, X } from 'lucide-react';
+import { analyzeExperimentData } from '../services/gemini';
+import { AppMode, Language } from '../types';
 
 interface WaveLabProps {
   mode: AppMode;
+  lang: Language;
 }
 
-export const WaveLab: React.FC<WaveLabProps> = ({ mode }) => {
+export const WaveLab: React.FC<WaveLabProps> = ({ mode, lang }) => {
+  const t = (en: string, vi: string) => lang === 'vi' ? vi : en;
+
   const [frequency, setFrequency] = useState(2);
   const [sourceSpeed, setSourceSpeed] = useState(0);
+  const [aiAnalysis, setAiAnalysis] = useState<string>('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef<number>(0);
   const timeRef = useRef<number>(0);
+
+  const handleAnalyze = async () => {
+    setIsAnalyzing(true);
+    const summary = mode === AppMode.SIM_RUN_RIPPLE 
+      ? `Ripple Tank: Frequency=${frequency}Hz, Interference pattern observed.`
+      : `Doppler Effect: Source Speed=${sourceSpeed}, Frequency=${frequency}Hz`;
+      
+    const result = await analyzeExperimentData("Wave Lab", { mode }, summary, lang);
+    setAiAnalysis(result);
+    setIsAnalyzing(false);
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -74,22 +92,15 @@ export const WaveLab: React.FC<WaveLabProps> = ({ mode }) => {
           ctx.fill();
 
        } else if (mode === AppMode.SIM_RUN_DOPPLER) {
-          // Moving source
           const cx = width / 2;
           const cy = height / 2;
           
-          // Source position oscillating or moving
-          // Let's make it loop left to right
           const loopTime = (timeRef.current * 0.5) % (width + 100);
           const sx = (timeRef.current * sourceSpeed * 5) % (width + 100) - 50;
-          const effectiveX = sourceSpeed > 0 ? sx : cx; // If speed 0, stay center
+          const effectiveX = sourceSpeed > 0 ? sx : cx; 
           
           ctx.strokeStyle = '#38bdf8';
           ctx.lineWidth = 2;
-          
-          // Draw expanding circles
-          // We need to store previous pulses? 
-          // Simplified visual: concentric circles offset by speed
           
           for (let i = 0; i < 20; i++) {
              const t = (timeRef.current - i * (5/frequency));
@@ -127,15 +138,33 @@ export const WaveLab: React.FC<WaveLabProps> = ({ mode }) => {
          </div>
          <div className="space-y-6">
             <div>
-               <label className="text-sm text-slate-400">Frequency ({frequency} Hz)</label>
+               <label className="text-sm text-slate-400">{t('Frequency', 'Tần Số')} ({frequency} Hz)</label>
                <input type="range" min="0.5" max="5" step="0.1" value={frequency} onChange={(e) => setFrequency(Number(e.target.value))} className="w-full h-2 bg-slate-700 rounded-lg accent-sky-500" />
             </div>
             {mode === AppMode.SIM_RUN_DOPPLER && (
                <div>
-                  <label className="text-sm text-slate-400">Source Speed (Mach {sourceSpeed/10})</label>
+                  <label className="text-sm text-slate-400">{t('Source Speed', 'Tốc Độ Nguồn')} (Mach {sourceSpeed/10})</label>
                   <input type="range" min="0" max="20" value={sourceSpeed} onChange={(e) => setSourceSpeed(Number(e.target.value))} className="w-full h-2 bg-slate-700 rounded-lg accent-lime-500" />
                </div>
             )}
+
+            <div className="pt-4 border-t border-slate-700">
+             {aiAnalysis ? (
+                <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-3 text-sm text-slate-200 relative animate-in slide-in-from-bottom-2">
+                  <button onClick={() => setAiAnalysis('')} className="absolute top-2 right-2 text-slate-500 hover:text-white"><X size={14}/></button>
+                  <p className="whitespace-pre-wrap text-xs leading-relaxed">{aiAnalysis}</p>
+                </div>
+              ) : (
+                <button 
+                  onClick={handleAnalyze}
+                  disabled={isAnalyzing}
+                  className="w-full py-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 rounded-xl text-slate-300 font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isAnalyzing ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
+                  {t('Analyze Wave', 'Phân Tích Sóng')}
+                </button>
+              )}
+            </div>
          </div>
       </div>
 

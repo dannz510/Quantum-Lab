@@ -23,6 +23,8 @@ export enum AppMode {
   SEARCH_GROUND = 'SEARCH_GROUND'
 }
 
+export type Language = 'en' | 'vi';
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'model';

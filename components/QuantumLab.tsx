@@ -1,14 +1,18 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Settings, AlignCenter, Radio, MoveHorizontal } from 'lucide-react';
+import { Settings, Loader2, Sparkles, X } from 'lucide-react';
 import { calculateDoubleSlitIntensity, calculateTunnelingProbability } from '../services/physics';
-import { AppMode } from '../types';
+import { analyzeExperimentData } from '../services/gemini';
+import { AppMode, Language } from '../types';
 
 interface QuantumLabProps {
   mode: AppMode;
+  lang: Language;
 }
 
-export const QuantumLab: React.FC<QuantumLabProps> = ({ mode }) => {
+export const QuantumLab: React.FC<QuantumLabProps> = ({ mode, lang }) => {
+  const t = (en: string, vi: string) => lang === 'vi' ? vi : en;
+
   // Slit State
   const [slitDist, setSlitDist] = useState(50); // micrometers
   const [wavelength, setWavelength] = useState(500); // nm
@@ -22,6 +26,10 @@ export const QuantumLab: React.FC<QuantumLabProps> = ({ mode }) => {
   const [barrierHeight, setBarrierHeight] = useState(10); // eV
   const [barrierWidth, setBarrierWidth] = useState(2); // nm
 
+  // AI
+  const [aiAnalysis, setAiAnalysis] = useState<string>('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -29,6 +37,22 @@ export const QuantumLab: React.FC<QuantumLabProps> = ({ mode }) => {
        drawInterference();
     }
   }, [mode, slitDist, wavelength, screenDist]);
+
+  const handleAnalyze = async () => {
+    setIsAnalyzing(true);
+    let summary = "";
+    if (mode === AppMode.SIM_RUN_SLIT) {
+        summary = `Double Slit: slit_dist=${slitDist}um, wavelength=${wavelength}nm`;
+    } else if (mode === AppMode.SIM_RUN_SPECTRUM) {
+        summary = `Spectrum: Element=${element}`;
+    } else {
+        const p = calculateTunnelingProbability(energy, barrierHeight, barrierWidth);
+        summary = `Tunneling: Energy=${energy}, Barrier=${barrierHeight}, Width=${barrierWidth}, Prob=${(p*100).toFixed(4)}%`;
+    }
+    const result = await analyzeExperimentData("Quantum Lab", { mode }, summary, lang);
+    setAiAnalysis(result);
+    setIsAnalyzing(false);
+  };
 
   const drawInterference = () => {
      const canvas = canvasRef.current;
@@ -43,17 +67,12 @@ export const QuantumLab: React.FC<QuantumLabProps> = ({ mode }) => {
      const height = canvas.height;
      const center = width / 2;
 
-     // Draw Gradient Pattern
      const imageData = ctx.createImageData(width, 100);
      const data = imageData.data;
 
-     // Calculate intensity for each pixel
-     // Lambda in meters = wavelength * 1e-9
-     // d in meters = slitDist * 1e-6
      const lamM = wavelength * 1e-9;
      const dM = slitDist * 1e-6;
 
-     // Color based on wavelength
      let r=0, g=0, b=0;
      if (wavelength < 450) { r=100; b=255; }
      else if (wavelength < 500) { g=200; b=255; }
@@ -62,7 +81,6 @@ export const QuantumLab: React.FC<QuantumLabProps> = ({ mode }) => {
      else { r=255; }
 
      for (let x = 0; x < width; x++) {
-        // Physical position on screen (scale factor arbitrary for viz)
         const posM = (x - center) * 0.00001; 
         const intensity = calculateDoubleSlitIntensity(posM, screenDist, dM, lamM);
         
@@ -76,7 +94,6 @@ export const QuantumLab: React.FC<QuantumLabProps> = ({ mode }) => {
      }
      ctx.putImageData(imageData, 0, height/2 - 50);
 
-     // Draw Intensity Graph
      ctx.strokeStyle = '#ffffff';
      ctx.lineWidth = 1;
      ctx.beginPath();
@@ -91,7 +108,6 @@ export const QuantumLab: React.FC<QuantumLabProps> = ({ mode }) => {
   };
 
   const renderSpectrum = () => {
-    // Fake emission lines
     const lines = {
        hydrogen: [410, 434, 486, 656],
        helium: [447, 501, 587, 667],
@@ -101,11 +117,10 @@ export const QuantumLab: React.FC<QuantumLabProps> = ({ mode }) => {
     return (
        <div className="flex flex-col h-full bg-slate-950 rounded-xl border border-slate-800 p-8">
           <div className="flex-1 flex flex-col items-center justify-center gap-8">
-             <div className="text-2xl font-bold text-white uppercase tracking-widest">{element} EMISSION SPECTRUM</div>
+             <div className="text-2xl font-bold text-white uppercase tracking-widest">{element} {t('Emission Spectrum', 'Phổ Phát Xạ')}</div>
              
-             <div className="w-full h-32 bg-black relative rounded-lg border border-slate-600 overflow-hidden">
+             <div className="w-full h-32 bg-black relative rounded-lg border border-slate-600 overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.5)]">
                 {lines[element].map(lam => {
-                   // Map 400-750nm to 0-100%
                    const pos = ((lam - 400) / 350) * 100;
                    let color = '#fff';
                    if (lam < 450) color = 'violet';
@@ -118,7 +133,7 @@ export const QuantumLab: React.FC<QuantumLabProps> = ({ mode }) => {
                    return (
                       <div 
                         key={lam}
-                        className="absolute top-0 bottom-0 w-1 shadow-[0_0_10px_currentColor]"
+                        className="absolute top-0 bottom-0 w-1 shadow-[0_0_15px_currentColor]"
                         style={{ left: `${pos}%`, backgroundColor: color, color: color }}
                       >
                          <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-slate-400 font-mono">{lam}</span>
@@ -127,7 +142,7 @@ export const QuantumLab: React.FC<QuantumLabProps> = ({ mode }) => {
                 })}
              </div>
              
-             <div className="w-full h-8 bg-gradient-to-r from-violet-900 via-green-900 to-red-900 opacity-30 rounded"></div>
+             <div className="w-full h-8 bg-gradient-to-r from-violet-900 via-green-900 to-red-900 opacity-30 rounded blur-xl"></div>
           </div>
        </div>
     );
@@ -139,25 +154,25 @@ export const QuantumLab: React.FC<QuantumLabProps> = ({ mode }) => {
         <div className="flex flex-col h-full bg-slate-900 rounded-xl border border-slate-700 p-8">
            <div className="flex-1 relative flex items-center">
               {/* Region 1: Incoming */}
-              <div className="h-1 bg-blue-500 w-1/3 relative">
-                 <div className="absolute -top-6 text-xs text-blue-400">Incoming Particle (E={energy}eV)</div>
+              <div className="h-1 bg-blue-500 w-1/3 relative shadow-[0_0_10px_blue]">
+                 <div className="absolute -top-6 text-xs text-blue-400">Incoming (E={energy}eV)</div>
               </div>
               
               {/* Barrier */}
-              <div className="h-32 w-24 bg-slate-700 border-x border-slate-500 relative flex items-center justify-center">
+              <div className="h-32 w-24 bg-slate-700 border-x border-slate-500 relative flex items-center justify-center backdrop-blur-md">
                  <div className="text-xs text-white text-center font-bold">Barrier<br/>(V={barrierHeight}eV)</div>
               </div>
 
               {/* Region 3: Outgoing */}
-              <div className="h-1 bg-blue-500/50 flex-1 relative" style={{ opacity: prob }}>
-                 <div className="absolute -top-6 text-xs text-blue-400">Transmitted Wave</div>
+              <div className="h-1 bg-blue-500/50 flex-1 relative shadow-[0_0_10px_blue]" style={{ opacity: Math.max(prob, 0.1) }}>
+                 <div className="absolute -top-6 text-xs text-blue-400">Transmitted</div>
               </div>
            </div>
            
-           <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 text-center">
-              <div className="text-sm text-slate-400 mb-2">Tunneling Probability</div>
+           <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 text-center shadow-lg">
+              <div className="text-sm text-slate-400 mb-2">{t('Tunneling Probability', 'Xác Suất Xuyên Hầm')}</div>
               <div className="text-3xl font-bold text-white font-mono">{(prob * 100).toExponential(2)}%</div>
-              <div className="text-xs text-slate-500 mt-2">Quantum mechanics allows particles to pass through barriers higher than their energy level.</div>
+              <div className="text-xs text-slate-500 mt-2">{t('Quantum mechanics allows particles to pass through barriers.', 'Cơ học lượng tử cho phép hạt đi xuyên rào cản.')}</div>
            </div>
         </div>
      );
@@ -212,6 +227,24 @@ export const QuantumLab: React.FC<QuantumLabProps> = ({ mode }) => {
                    </div>
                 </>
              )}
+
+             <div className="pt-4 border-t border-slate-700">
+             {aiAnalysis ? (
+                <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-3 text-sm text-slate-200 relative animate-in slide-in-from-bottom-2">
+                  <button onClick={() => setAiAnalysis('')} className="absolute top-2 right-2 text-slate-500 hover:text-white"><X size={14}/></button>
+                  <p className="whitespace-pre-wrap text-xs leading-relaxed">{aiAnalysis}</p>
+                </div>
+              ) : (
+                <button 
+                  onClick={handleAnalyze}
+                  disabled={isAnalyzing}
+                  className="w-full py-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 rounded-xl text-slate-300 font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isAnalyzing ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
+                  {t('Explain Phenomenon', 'Giải Thích Hiện Tượng')}
+                </button>
+              )}
+            </div>
           </div>
        </div>
 

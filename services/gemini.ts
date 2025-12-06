@@ -1,5 +1,6 @@
 
 import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
+import { Language } from "../types";
 
 // We create a new instance per call to ensure we pick up the latest env var if it changes via window.aistudio
 const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -121,11 +122,19 @@ export const generatePhysicsVideo = async (
 export const analyzeExperimentData = async (
   experimentName: string,
   setupParams: any,
-  dataSummary: string
+  dataSummary: string,
+  language: Language = 'en'
 ): Promise<string> => {
   const ai = getAI();
+  
+  const langInstruction = language === 'vi' 
+    ? "Please respond in VIETNAMESE (Tiếng Việt). Use clear, scientific yet accessible language."
+    : "Please respond in ENGLISH. Use clear, scientific yet accessible language.";
+
   const prompt = `
     You are an AI Physics Lab Assistant.
+    ${langInstruction}
+    
     Experiment: ${experimentName}
     Setup Parameters: ${JSON.stringify(setupParams)}
     Observed Data Summary: ${dataSummary}
@@ -145,6 +154,8 @@ export const analyzeExperimentData = async (
     return response.text || "Analysis complete, but no text generated.";
   } catch (error) {
     console.error("Analysis error:", error);
-    return "I couldn't analyze the data at this moment. Please check your connection.";
+    return language === 'vi' 
+      ? "Không thể phân tích dữ liệu lúc này. Vui lòng kiểm tra kết nối."
+      : "I couldn't analyze the data at this moment. Please check your connection.";
   }
 };

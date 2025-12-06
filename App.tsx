@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Atom, MessageSquare, Film, Brain, Search, LayoutDashboard, ChevronRight, X } from 'lucide-react';
+import { Atom, MessageSquare, Film, Brain, Search, LayoutDashboard, ChevronRight, X, Globe } from 'lucide-react';
 import { VeoLab } from './components/VeoLab';
 import { ChatTutor } from './components/ChatTutor';
 import { DeepThinker } from './components/DeepThinker';
@@ -12,11 +12,14 @@ import { MechanicsLab } from './components/MechanicsLab';
 import { ElectronicsLab } from './components/ElectronicsLab';
 import { QuantumLab } from './components/QuantumLab';
 import { WaveLab } from './components/WaveLab';
-import { AppMode } from './types';
+import { AppMode, Language } from './types';
 
 function App() {
   const [mode, setMode] = useState<AppMode>(AppMode.DASHBOARD);
   const [showChatWidget, setShowChatWidget] = useState(false);
+  const [lang, setLang] = useState<Language>('en');
+
+  const t = (en: string, vi: string) => lang === 'vi' ? vi : en;
 
   const NavItem = ({ m, icon: Icon, label, desc }: { m: AppMode, icon: any, label: string, desc?: string }) => (
     <button
@@ -36,24 +39,24 @@ function App() {
 
   const getHeaderTitle = (m: AppMode) => {
     switch (m) {
-      case AppMode.DASHBOARD: return "Laboratory Dashboard";
-      case AppMode.SIM_SELECTOR: return "Select Experiment";
-      case AppMode.SIM_RUN_PENDULUM: return "Simple Pendulum Lab";
-      case AppMode.SIM_RUN_VEO: return "Veo Generative Lab";
-      case AppMode.SIM_RUN_CIRCUIT: return "RLC Circuit Builder";
-      case AppMode.SIM_RUN_SLIT: return "Double Slit Experiment";
-      case AppMode.SIM_RUN_INCLINED: return "Inclined Plane Dynamics";
-      case AppMode.SIM_RUN_FLUIDS: return "Archimedes Fluid Lab";
-      case AppMode.SIM_RUN_ORBITS: return "Gravitational Orbits";
-      case AppMode.SIM_RUN_OSCILLOSCOPE: return "Virtual Oscilloscope";
-      case AppMode.SIM_RUN_INDUCTION: return "Faraday's Law Induction";
-      case AppMode.SIM_RUN_SPECTRUM: return "Atomic Spectrum Analysis";
-      case AppMode.SIM_RUN_TUNNELING: return "Quantum Tunneling";
-      case AppMode.SIM_RUN_RIPPLE: return "Ripple Tank 3D";
-      case AppMode.SIM_RUN_DOPPLER: return "Doppler Effect";
-      case AppMode.CHAT_TUTOR: return "AI Physics Tutor";
-      case AppMode.DEEP_THINK: return "Deep Reasoning Engine";
-      case AppMode.SEARCH_GROUND: return "Live Research Terminal";
+      case AppMode.DASHBOARD: return t("Laboratory Dashboard", "Bảng Điều Khiển Lab");
+      case AppMode.SIM_SELECTOR: return t("Select Experiment", "Chọn Thí Nghiệm");
+      case AppMode.SIM_RUN_PENDULUM: return t("Simple Pendulum Lab", "Phòng Lab Con Lắc Đơn");
+      case AppMode.SIM_RUN_VEO: return t("Veo Generative Lab", "Phòng Lab Tạo Sinh Veo");
+      case AppMode.SIM_RUN_CIRCUIT: return t("RLC Circuit Builder", "Xây Dựng Mạch RLC");
+      case AppMode.SIM_RUN_SLIT: return t("Double Slit Experiment", "Thí Nghiệm Khe Y-âng");
+      case AppMode.SIM_RUN_INCLINED: return t("Inclined Plane Dynamics", "Động Lực Học Mặt Phẳng Nghiêng");
+      case AppMode.SIM_RUN_FLUIDS: return t("Archimedes Fluid Lab", "Phòng Lab Thủy Lực Archimedes");
+      case AppMode.SIM_RUN_ORBITS: return t("Gravitational Orbits", "Quỹ Đạo Hấp Dẫn");
+      case AppMode.SIM_RUN_OSCILLOSCOPE: return t("Virtual Oscilloscope", "Dao Động Ký Ảo");
+      case AppMode.SIM_RUN_INDUCTION: return t("Faraday's Law Induction", "Cảm Ứng Định Luật Faraday");
+      case AppMode.SIM_RUN_SPECTRUM: return t("Atomic Spectrum Analysis", "Phân Tích Phổ Nguyên Tử");
+      case AppMode.SIM_RUN_TUNNELING: return t("Quantum Tunneling", "Hiệu Ứng Đường Hầm");
+      case AppMode.SIM_RUN_RIPPLE: return t("Ripple Tank 3D", "Bể Sóng 3D");
+      case AppMode.SIM_RUN_DOPPLER: return t("Doppler Effect", "Hiệu Ứng Doppler");
+      case AppMode.CHAT_TUTOR: return t("AI Physics Tutor", "Gia Sư Vật Lý AI");
+      case AppMode.DEEP_THINK: return t("Deep Reasoning Engine", "Động Cơ Suy Luận Sâu");
+      case AppMode.SEARCH_GROUND: return t("Live Research Terminal", "Thiết Bị Nghiên Cứu Trực Tuyến");
       default: return "Quantum Lab AI";
     }
   };
@@ -74,21 +77,21 @@ function App() {
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          <div className="text-xs font-bold text-slate-500 px-4 py-2 uppercase tracking-wider">Laboratory</div>
-          <NavItem m={AppMode.DASHBOARD} icon={LayoutDashboard} label="Dashboard" desc="Overview" />
-          <NavItem m={AppMode.SIM_SELECTOR} icon={Atom} label="Lab Simulator" desc="Interactive Experiments" />
-          <NavItem m={AppMode.SEARCH_GROUND} icon={Search} label="Research" desc="Live Data" />
+          <div className="text-xs font-bold text-slate-500 px-4 py-2 uppercase tracking-wider">{t("Laboratory", "Phòng Lab")}</div>
+          <NavItem m={AppMode.DASHBOARD} icon={LayoutDashboard} label={t("Dashboard", "Bảng Điều Khiển")} desc={t("Overview", "Tổng Quan")} />
+          <NavItem m={AppMode.SIM_SELECTOR} icon={Atom} label={t("Lab Simulator", "Mô Phỏng Lab")} desc={t("Interactive Experiments", "Thí Nghiệm Tương Tác")} />
+          <NavItem m={AppMode.SEARCH_GROUND} icon={Search} label={t("Research", "Nghiên Cứu")} desc={t("Live Data", "Dữ Liệu Sống")} />
           
-          <div className="text-xs font-bold text-slate-500 px-4 py-2 mt-6 uppercase tracking-wider">Intelligence</div>
-          <NavItem m={AppMode.DEEP_THINK} icon={Brain} label="Deep Thinking" desc="Problem Solving" />
-          <NavItem m={AppMode.CHAT_TUTOR} icon={MessageSquare} label="AI Tutor" desc="Chat Assistant" />
+          <div className="text-xs font-bold text-slate-500 px-4 py-2 mt-6 uppercase tracking-wider">{t("Intelligence", "Trí Tuệ")}</div>
+          <NavItem m={AppMode.DEEP_THINK} icon={Brain} label={t("Deep Thinking", "Suy Nghĩ Sâu")} desc={t("Problem Solving", "Giải Quyết Vấn Đề")} />
+          <NavItem m={AppMode.CHAT_TUTOR} icon={MessageSquare} label={t("AI Tutor", "Gia Sư AI")} desc={t("Chat Assistant", "Trợ Lý Chat")} />
         </nav>
 
         <div className="p-4 border-t border-slate-800/50">
            <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
              <div className="flex items-center gap-2 text-xs text-green-400 mb-2">
                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-               System Operational
+               {t("System Operational", "Hệ Thống Sẵn Sàng")}
              </div>
              <p className="text-xs text-slate-500">Gemini Pro Active</p>
            </div>
@@ -103,6 +106,14 @@ function App() {
             {getHeaderTitle(mode)}
           </h2>
           <div className="flex items-center gap-4">
+             {/* Language Toggle */}
+             <button 
+                onClick={() => setLang(lang === 'en' ? 'vi' : 'en')}
+                className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-full border border-slate-600 transition-colors"
+             >
+                <Globe size={14} className="text-blue-400" />
+                <span className="text-xs font-bold">{lang === 'en' ? 'EN' : 'VI'}</span>
+             </button>
              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-teal-400 to-blue-500 shadow-md"></div>
           </div>
         </header>
@@ -110,34 +121,34 @@ function App() {
         {/* Viewport */}
         <div className="flex-1 overflow-hidden relative">
           {mode === AppMode.DASHBOARD && <Dashboard setMode={setMode} />}
-          {mode === AppMode.SIM_SELECTOR && <SimSelector setMode={setMode} />}
+          {mode === AppMode.SIM_SELECTOR && <SimSelector setMode={setMode} lang={lang} />}
           
           {/* Active Labs */}
-          {mode === AppMode.SIM_RUN_PENDULUM && <PendulumLab />}
+          {mode === AppMode.SIM_RUN_PENDULUM && <PendulumLab lang={lang} />}
           {mode === AppMode.SIM_RUN_VEO && <VeoLab />}
           
           {/* Mechanics Labs */}
           {(mode === AppMode.SIM_RUN_INCLINED || 
             mode === AppMode.SIM_RUN_FLUIDS || 
             mode === AppMode.SIM_RUN_ORBITS) && 
-            <MechanicsLab mode={mode} />}
+            <MechanicsLab mode={mode} lang={lang} />}
 
           {/* Electronics Labs */}
           {(mode === AppMode.SIM_RUN_CIRCUIT || 
             mode === AppMode.SIM_RUN_OSCILLOSCOPE || 
             mode === AppMode.SIM_RUN_INDUCTION) && 
-            <ElectronicsLab mode={mode} />}
+            <ElectronicsLab mode={mode} lang={lang} />}
             
           {/* Quantum Labs */}
           {(mode === AppMode.SIM_RUN_SLIT || 
             mode === AppMode.SIM_RUN_SPECTRUM || 
             mode === AppMode.SIM_RUN_TUNNELING) && 
-            <QuantumLab mode={mode} />}
+            <QuantumLab mode={mode} lang={lang} />}
             
           {/* Wave Labs */}
           {(mode === AppMode.SIM_RUN_RIPPLE || 
             mode === AppMode.SIM_RUN_DOPPLER) && 
-            <WaveLab mode={mode} />}
+            <WaveLab mode={mode} lang={lang} />}
 
           {/* AI Tools */}
           {mode === AppMode.CHAT_TUTOR && <ChatTutor />}
@@ -152,7 +163,7 @@ function App() {
           {showChatWidget ? (
             <div className="w-96 h-[500px] bg-lab-card border border-slate-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-10 duration-300">
                <div className="p-3 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
-                  <span className="font-bold text-white flex items-center gap-2"><MessageSquare size={16}/> Quantum Helper</span>
+                  <span className="font-bold text-white flex items-center gap-2"><MessageSquare size={16}/> {t("Quantum Helper", "Trợ Lý Quantum")}</span>
                   <button onClick={() => setShowChatWidget(false)} className="text-slate-400 hover:text-white"><X size={18}/></button>
                </div>
                <div className="flex-1 overflow-hidden relative">
