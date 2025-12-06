@@ -1,0 +1,5 @@
+{
+  "name": "Quantum Lab AI",
+  "description": "A next-generation physics laboratory simulator powered by Google Gemini. Features include Veo video generation for simulations, deep thinking for complex problem solving, real-time search grounding, and an AI tutor.",
+  "requestFramePermissions": []
+}
