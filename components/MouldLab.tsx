@@ -67,10 +67,14 @@ export const MouldLab: React.FC<MouldLabProps> = ({ lang }) => {
     ctx.fillStyle = '#0f172a';
     ctx.fillRect(0, 0, width, height);
 
-    // Draw Container (Beaker) with glass effect
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 4;
+    // Draw Container (Beaker) with better glass effect
+    const beakerGrad = ctx.createLinearGradient(80, 250, 160, 400);
+    beakerGrad.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+    beakerGrad.addColorStop(1, 'rgba(255, 255, 255, 0.02)');
+    
+    ctx.fillStyle = beakerGrad;
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(80, 250);
     ctx.lineTo(80, 400);
@@ -78,6 +82,10 @@ export const MouldLab: React.FC<MouldLabProps> = ({ lang }) => {
     ctx.lineTo(160, 250);
     ctx.stroke();
     ctx.fill();
+    
+    // Glass reflection highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fillRect(85, 260, 8, 130);
 
     // Draw Floor
     ctx.fillStyle = '#1e293b';
@@ -104,10 +112,11 @@ export const MouldLab: React.FC<MouldLabProps> = ({ lang }) => {
     for (const l of links) {
        ctx.beginPath();
        ctx.arc(l.x, l.y, 4, 0, Math.PI*2);
-       // Gradient for metallic look
+       // Improved gradient for 3D metallic look
        const grad = ctx.createRadialGradient(l.x - 1, l.y - 1, 1, l.x, l.y, 4);
-       grad.addColorStop(0, '#fbcfe8');
-       grad.addColorStop(1, '#be185d');
+       grad.addColorStop(0, '#fce7f3'); // Highlight
+       grad.addColorStop(0.4, '#ec4899'); // Base
+       grad.addColorStop(1, '#831843'); // Shadow
        ctx.fillStyle = grad;
        ctx.fill();
     }
@@ -135,7 +144,7 @@ export const MouldLab: React.FC<MouldLabProps> = ({ lang }) => {
 
   return (
     <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 overflow-hidden">
-       <div className="lg:col-span-3 bg-lab-card border border-slate-700 rounded-2xl p-4 flex flex-col gap-6">
+       <div className="lg:col-span-3 bg-lab-card border border-slate-700 rounded-2xl p-4 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
           <div className="flex items-center gap-2 text-slate-300 font-bold border-b border-slate-700 pb-2">
             <Settings size={20} /> {t('Chain Properties', 'Thuộc Tính Chuỗi')}
           </div>

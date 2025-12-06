@@ -185,16 +185,16 @@ export const stepChainFountain = (
 };
 
 // --- Gravitational Wave Chirp ---
-export const calculateGravitationalWaveStrain = (time: number, distance: number, mergerTime: number) => {
-  // Simplified Chirp signal model
-  // Amplitude increases as we approach merger
-  // Frequency increases as we approach merger
+export const calculateGravitationalWaveStrain = (time: number, distance: number, mergerTime: number, spin: number = 0) => {
+  // Simplified Chirp signal model with Spin Influence
+  // Positive Spin (aligned) delays merger, allows closer orbit (higher freq/amp)
   
-  const timeLeft = Math.max(0.1, mergerTime - time);
+  const effectiveMergerTime = mergerTime * (1 + spin * 0.2);
+  const timeLeft = Math.max(0.05, effectiveMergerTime - time);
   
-  if (time > mergerTime) {
+  if (time > effectiveMergerTime) {
      // Ringdown: Damped sine
-     const decay = Math.exp(-(time - mergerTime) * 2);
+     const decay = Math.exp(-(time - effectiveMergerTime) * (2 + spin));
      return Math.sin(time * 20) * decay * 0.5;
   }
 
@@ -202,7 +202,8 @@ export const calculateGravitationalWaveStrain = (time: number, distance: number,
   // Freq ~ (t_merger - t)^(-3/8)
   const freq = 1 / Math.pow(timeLeft, 0.375);
   // Amp ~ (t_merger - t)^(-1/4)
-  const amp = 1 / Math.pow(timeLeft, 0.25);
+  // Spin boosts amplitude slightly near merger
+  const amp = (1 / Math.pow(timeLeft, 0.25)) * (1 + spin * 0.1);
 
   return Math.sin(time * freq * 5) * amp * 0.1;
 };

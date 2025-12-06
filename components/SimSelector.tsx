@@ -266,7 +266,7 @@ export const SimSelector: React.FC<SimSelectorProps> = ({ setMode, lang }) => {
             <div 
               key={sim.id}
               onClick={() => isUnlocked && handleSelect(sim.id)}
-              className={`bg-lab-card border border-slate-700/50 rounded-2xl overflow-hidden group hover:border-slate-500 transition-all cursor-pointer relative flex flex-col h-full ${!isUnlocked ? 'opacity-60 cursor-not-allowed' : ''}`}
+              className={`bg-lab-card border border-slate-700/50 rounded-2xl overflow-hidden group hover:border-slate-500 transition-all cursor-pointer relative flex flex-col h-full hover:shadow-2xl hover:shadow-blue-900/10 hover:-translate-y-1 duration-300 ${!isUnlocked ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
               <div className={`h-32 ${sim.thumbnailColor} bg-opacity-20 relative flex items-center justify-center overflow-hidden shrink-0`}>
                  <div className={`absolute inset-0 ${sim.thumbnailColor} opacity-10 group-hover:opacity-20 transition-opacity`}></div>
@@ -277,7 +277,7 @@ export const SimSelector: React.FC<SimSelectorProps> = ({ setMode, lang }) => {
                    </div>
                  )}
                  {isNew && (
-                    <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg animate-pulse">NEW</div>
+                    <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg animate-pulse z-10">NEW</div>
                  )}
               </div>
               
@@ -300,7 +300,7 @@ export const SimSelector: React.FC<SimSelectorProps> = ({ setMode, lang }) => {
                  </p>
                  
                  {isUnlocked && (
-                   <button className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2 mt-auto">
+                   <button className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2 mt-auto group-hover:bg-blue-600">
                       <Play size={12} /> {t('Launch Lab', 'Chạy Lab')}
                    </button>
                  )}

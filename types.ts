@@ -38,7 +38,7 @@ export interface ChatMessage {
 
 export interface SearchResult {
   text: string;
-  groundingChunks: Array<{
+  groundingChunks?: Array<{
     web?: {
       uri?: string;
       title?: string;

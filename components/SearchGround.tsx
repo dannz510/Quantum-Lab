@@ -55,7 +55,7 @@ export const SearchGround: React.FC = () => {
         </button>
       </form>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
         {result && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Main Answer */}
@@ -68,7 +68,7 @@ export const SearchGround: React.FC = () => {
             {result.groundingChunks && result.groundingChunks.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {result.groundingChunks.map((chunk, idx) => {
-                  if (!chunk.web || !chunk.web.uri) return null;
+                  if (!chunk.web?.uri) return null;
                   return (
                     <a 
                       key={idx}
