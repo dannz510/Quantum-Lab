@@ -17,6 +17,9 @@ export enum AppMode {
   SIM_RUN_TUNNELING = 'SIM_RUN_TUNNELING',
   SIM_RUN_RIPPLE = 'SIM_RUN_RIPPLE',
   SIM_RUN_DOPPLER = 'SIM_RUN_DOPPLER',
+  // New Modern Labs
+  SIM_RUN_MOULD = 'SIM_RUN_MOULD',
+  SIM_RUN_BLACKHOLE = 'SIM_RUN_BLACKHOLE',
 
   CHAT_TUTOR = 'CHAT_TUTOR',
   DEEP_THINK = 'DEEP_THINK',
@@ -37,8 +40,8 @@ export interface SearchResult {
   text: string;
   groundingChunks: Array<{
     web?: {
-      uri: string;
-      title: string;
+      uri?: string;
+      title?: string;
     }
   }>;
 }

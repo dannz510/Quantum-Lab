@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, Play, Lock, Film, Activity, Waves, Zap, Magnet, Orbit, Triangle, Droplets, Radio, MoveHorizontal, AlignCenter, Globe, SortAsc } from 'lucide-react';
+import { ArrowLeft, Play, Lock, Film, Activity, Waves, Zap, Magnet, Orbit, Triangle, Droplets, Radio, MoveHorizontal, AlignCenter, Globe, SortAsc, Link2, Aperture } from 'lucide-react';
 import { AppMode, SimulationStats, Language } from '../types';
 
 interface SimSelectorProps {
@@ -41,6 +41,16 @@ const SIMULATIONS: SimulationStats[] = [
     thumbnailColor: 'bg-cyan-600'
   },
   {
+    id: 'mould',
+    name: 'Chain Fountain (Mould)',
+    nameVi: 'Hiệu Ứng Mould',
+    category: 'Mechanics',
+    difficulty: 'Medium',
+    description: 'Simulate the counter-intuitive physics of a self-siphoning chain bead fountain.',
+    descriptionVi: 'Mô phỏng vật lý phản trực giác của chuỗi hạt tự phun trào.',
+    thumbnailColor: 'bg-pink-600'
+  },
+  {
     id: 'orbits',
     name: 'Gravitational Orbits',
     nameVi: 'Quỹ Đạo Hấp Dẫn',
@@ -49,6 +59,16 @@ const SIMULATIONS: SimulationStats[] = [
     description: 'Simulate multi-body orbits and gravitational force fields in a vacuum.',
     descriptionVi: 'Mô phỏng quỹ đạo đa vật thể và trường lực hấp dẫn trong chân không.',
     thumbnailColor: 'bg-slate-600'
+  },
+  {
+    id: 'blackhole',
+    name: 'Black Hole Merger',
+    nameVi: 'Hợp Nhất Hố Đen',
+    category: 'Forces',
+    difficulty: 'Hard',
+    description: 'Visualize spacetime ripples and gravitational waves from binary black hole mergers (LIGO).',
+    descriptionVi: 'Trực quan hóa sóng không-thời gian và sóng hấp dẫn từ sự hợp nhất hố đen đôi.',
+    thumbnailColor: 'bg-gray-800'
   },
   {
     id: 'veo',
@@ -166,6 +186,8 @@ export const SimSelector: React.FC<SimSelectorProps> = ({ setMode, lang }) => {
       case 'tunneling': setMode(AppMode.SIM_RUN_TUNNELING); break;
       case 'ripple': setMode(AppMode.SIM_RUN_RIPPLE); break;
       case 'doppler': setMode(AppMode.SIM_RUN_DOPPLER); break;
+      case 'mould': setMode(AppMode.SIM_RUN_MOULD); break;
+      case 'blackhole': setMode(AppMode.SIM_RUN_BLACKHOLE); break;
       default: break;
     }
   };
@@ -185,6 +207,8 @@ export const SimSelector: React.FC<SimSelectorProps> = ({ setMode, lang }) => {
         case 'tunneling': return MoveHorizontal;
         case 'ripple': return Waves;
         case 'doppler': return Radio;
+        case 'mould': return Link2;
+        case 'blackhole': return Aperture;
         default: return Activity;
     }
   };
@@ -236,6 +260,7 @@ export const SimSelector: React.FC<SimSelectorProps> = ({ setMode, lang }) => {
           // Unlocking logic: ALL UNLOCKED
           const isUnlocked = true;
           const Icon = getIcon(sim.id);
+          const isNew = sim.id === 'mould' || sim.id === 'blackhole';
           
           return (
             <div 
@@ -250,6 +275,9 @@ export const SimSelector: React.FC<SimSelectorProps> = ({ setMode, lang }) => {
                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[2px]">
                       <span className="flex items-center gap-2 text-slate-300 font-bold uppercase text-xs tracking-wider border border-slate-500 px-3 py-1 rounded-full bg-black/40"><Lock size={12} /> {t('Locked', 'Đã khóa')}</span>
                    </div>
+                 )}
+                 {isNew && (
+                    <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg animate-pulse">NEW</div>
                  )}
               </div>
               

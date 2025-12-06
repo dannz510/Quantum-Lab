@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Search, Globe, ExternalLink, ArrowRight } from 'lucide-react';
 import { searchPhysicsTopic } from '../services/gemini';
@@ -67,7 +68,7 @@ export const SearchGround: React.FC = () => {
             {result.groundingChunks && result.groundingChunks.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {result.groundingChunks.map((chunk, idx) => {
-                  if (!chunk.web) return null;
+                  if (!chunk.web || !chunk.web.uri) return null;
                   return (
                     <a 
                       key={idx}
@@ -79,7 +80,7 @@ export const SearchGround: React.FC = () => {
                       <div className="flex items-start justify-between">
                          <div>
                             <h4 className="font-semibold text-emerald-200 mb-1 group-hover:text-emerald-400 transition-colors line-clamp-1">
-                              {chunk.web.title}
+                              {chunk.web.title || chunk.web.uri}
                             </h4>
                             <p className="text-xs text-slate-500 font-mono truncate">{chunk.web.uri}</p>
                          </div>

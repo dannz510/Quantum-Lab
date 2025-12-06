@@ -180,7 +180,7 @@ export const QuantumLab: React.FC<QuantumLabProps> = ({ mode, lang }) => {
 
   return (
     <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 overflow-hidden">
-       <div className="lg:col-span-3 bg-lab-card border border-slate-700 rounded-2xl p-4 flex flex-col gap-6">
+       <div className="lg:col-span-3 bg-lab-card border border-slate-700 rounded-2xl p-4 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
           <div className="flex items-center gap-2 text-slate-300 font-bold border-b border-slate-700 pb-2">
              <Settings size={20} /> Quantum Setup
           </div>
@@ -228,11 +228,16 @@ export const QuantumLab: React.FC<QuantumLabProps> = ({ mode, lang }) => {
                 </>
              )}
 
-             <div className="pt-4 border-t border-slate-700">
+             <div className="pt-4 border-t border-slate-700 mt-auto">
              {aiAnalysis ? (
-                <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-3 text-sm text-slate-200 relative animate-in slide-in-from-bottom-2">
-                  <button onClick={() => setAiAnalysis('')} className="absolute top-2 right-2 text-slate-500 hover:text-white"><X size={14}/></button>
-                  <p className="whitespace-pre-wrap text-xs leading-relaxed">{aiAnalysis}</p>
+                <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-3 text-sm text-slate-200 relative animate-in slide-in-from-bottom-2 flex flex-col">
+                  <div className="flex justify-between items-start mb-2 sticky top-0">
+                     <div className="flex items-center gap-2 text-purple-400 text-xs font-bold"><Sparkles size={12}/> AI Analysis</div>
+                     <button onClick={() => setAiAnalysis('')} className="text-slate-500 hover:text-white p-1 rounded hover:bg-white/10 transition-colors"><X size={14}/></button>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                     <p className="whitespace-pre-wrap text-xs leading-relaxed">{aiAnalysis}</p>
+                  </div>
                 </div>
               ) : (
                 <button 

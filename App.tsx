@@ -12,6 +12,8 @@ import { MechanicsLab } from './components/MechanicsLab';
 import { ElectronicsLab } from './components/ElectronicsLab';
 import { QuantumLab } from './components/QuantumLab';
 import { WaveLab } from './components/WaveLab';
+import { MouldLab } from './components/MouldLab';
+import { BlackHoleLab } from './components/BlackHoleLab';
 import { AppMode, Language } from './types';
 
 function App() {
@@ -54,6 +56,8 @@ function App() {
       case AppMode.SIM_RUN_TUNNELING: return t("Quantum Tunneling", "Hiệu Ứng Đường Hầm");
       case AppMode.SIM_RUN_RIPPLE: return t("Ripple Tank 3D", "Bể Sóng 3D");
       case AppMode.SIM_RUN_DOPPLER: return t("Doppler Effect", "Hiệu Ứng Doppler");
+      case AppMode.SIM_RUN_MOULD: return t("Chain Fountain (Mould)", "Hiệu Ứng Mould");
+      case AppMode.SIM_RUN_BLACKHOLE: return t("Black Hole Merger", "Hợp Nhất Hố Đen");
       case AppMode.CHAT_TUTOR: return t("AI Physics Tutor", "Gia Sư Vật Lý AI");
       case AppMode.DEEP_THINK: return t("Deep Reasoning Engine", "Động Cơ Suy Luận Sâu");
       case AppMode.SEARCH_GROUND: return t("Live Research Terminal", "Thiết Bị Nghiên Cứu Trực Tuyến");
@@ -72,7 +76,7 @@ function App() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-white tracking-tight">Quantum Lab</h1>
-            <p className="text-xs text-slate-500 font-mono">v3.1 AI-SIM</p>
+            <p className="text-xs text-slate-500 font-mono">v4.0 AI-SIM</p>
           </div>
         </div>
 
@@ -149,6 +153,10 @@ function App() {
           {(mode === AppMode.SIM_RUN_RIPPLE || 
             mode === AppMode.SIM_RUN_DOPPLER) && 
             <WaveLab mode={mode} lang={lang} />}
+            
+          {/* New Modern Labs */}
+          {mode === AppMode.SIM_RUN_MOULD && <MouldLab lang={lang} />}
+          {mode === AppMode.SIM_RUN_BLACKHOLE && <BlackHoleLab lang={lang} />}
 
           {/* AI Tools */}
           {mode === AppMode.CHAT_TUTOR && <ChatTutor />}

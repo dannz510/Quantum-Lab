@@ -109,3 +109,100 @@ export const calculateTunnelingProbability = (E: number, V: number, width: numbe
   const exponent = -2 * k_factor * K * width;
   return Math.exp(exponent);
 };
+
+// --- Mould Effect (Chain Fountain) ---
+export interface ChainLink {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  isFixed: boolean;
+}
+
+export const stepChainFountain = (
+  links: ChainLink[], 
+  dt: number, 
+  kickStrength: number,
+  containerHeight: number
+): ChainLink[] => {
+  const gravity = 500; // px/s^2 scaled
+  const linkDist = 10;
+  
+  // 1. Verlet Integration & Forces
+  let newLinks = links.map(l => {
+    if (l.isFixed) return l;
+
+    let { x, y, vx, vy } = l;
+
+    // Gravity
+    vy += gravity * dt;
+
+    // Floor collision & Kick
+    if (y > containerHeight) {
+      y = containerHeight;
+      vy = -vy * 0.1; // Damping on floor
+      vx = vx * 0.5; // Friction
+
+      // The Mould Effect "Kick"
+      // If the link above is pulling this link up, the floor pushes back
+      if (vy < 0) { // Moving up
+         vy -= kickStrength * 10 * dt; 
+      }
+    }
+
+    x += vx * dt;
+    y += vy * dt;
+
+    return { ...l, x, y, vx, vy, isFixed: l.isFixed };
+  });
+
+  // 2. Constraints (Distance between links)
+  for (let iter = 0; iter < 5; iter++) {
+    for (let i = 0; i < newLinks.length - 1; i++) {
+      const l1 = newLinks[i];
+      const l2 = newLinks[i+1];
+      
+      const dx = l2.x - l1.x;
+      const dy = l2.y - l1.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      const diff = (dist - linkDist) / dist;
+      
+      const offsetX = dx * diff * 0.5;
+      const offsetY = dy * diff * 0.5;
+
+      if (!l1.isFixed) {
+        l1.x += offsetX;
+        l1.y += offsetY;
+      }
+      if (!l2.isFixed) {
+        l2.x -= offsetX;
+        l2.y -= offsetY;
+      }
+    }
+  }
+
+  return newLinks;
+};
+
+// --- Gravitational Wave Chirp ---
+export const calculateGravitationalWaveStrain = (time: number, distance: number, mergerTime: number) => {
+  // Simplified Chirp signal model
+  // Amplitude increases as we approach merger
+  // Frequency increases as we approach merger
+  
+  const timeLeft = Math.max(0.1, mergerTime - time);
+  
+  if (time > mergerTime) {
+     // Ringdown: Damped sine
+     const decay = Math.exp(-(time - mergerTime) * 2);
+     return Math.sin(time * 20) * decay * 0.5;
+  }
+
+  // Inspiral
+  // Freq ~ (t_merger - t)^(-3/8)
+  const freq = 1 / Math.pow(timeLeft, 0.375);
+  // Amp ~ (t_merger - t)^(-1/4)
+  const amp = 1 / Math.pow(timeLeft, 0.25);
+
+  return Math.sin(time * freq * 5) * amp * 0.1;
+};
