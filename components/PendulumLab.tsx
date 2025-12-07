@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, RotateCcw, Save, Settings, Info, Loader2, Sparkles, X, Activity, Ruler, ArrowUpRight, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Play, Pause, RotateCcw, Settings, Loader2, Sparkles, X, Activity, Ruler, ArrowUpRight, TrendingUp } from 'lucide-react';
 import { calculateLargeAnglePeriod, calculateEnergy, stepPendulumRK4, calculatePendulumForces } from '../services/physics';
 import { analyzeExperimentData } from '../services/gemini';
 import { Material, DataPoint, Language } from '../types';
@@ -9,7 +9,7 @@ interface PendulumLabProps {
   lang: Language;
 }
 
-// Materials DB
+// Materials DB with Gradient IDs
 const MATERIALS: Material[] = [
   { id: 'steel', name: 'Steel', density: 7850, frictionCoeff: 0.002, color: 'url(#gradSteel)' },
   { id: 'wood', name: 'Wood', density: 700, frictionCoeff: 0.01, color: 'url(#gradWood)' },
@@ -20,7 +20,6 @@ export const PendulumLab: React.FC<PendulumLabProps> = ({ lang }) => {
   const t = (en: string, vi: string) => lang === 'vi' ? vi : en;
 
   // --- STATE ---
-  // Input Parameters
   const [length, setLength] = useState(1.5); // meters
   const [mass, setMass] = useState(1.0); // kg
   const [initialAngle, setInitialAngle] = useState(30); // degrees
@@ -32,7 +31,7 @@ export const PendulumLab: React.FC<PendulumLabProps> = ({ lang }) => {
   const [time, setTime] = useState(0);
   const [angle, setAngle] = useState(initialAngle * (Math.PI / 180));
   const [velocity, setVelocity] = useState(0);
-  const [simSpeed, setSimSpeed] = useState(1.0); // Speed multiplier
+  const [simSpeed, setSimSpeed] = useState(1.0); 
 
   // Visualization Options
   const [showVectors, setShowVectors] = useState(false);
@@ -122,24 +121,19 @@ export const PendulumLab: React.FC<PendulumLabProps> = ({ lang }) => {
       const w = canvas.width;
       const h = canvas.height;
       
-      // Shift image left
       const imageData = ctx.getImageData(1, 0, w - 1, h);
       ctx.putImageData(imageData, 0, 0);
-      ctx.clearRect(w - 1, 0, 1, h); // Clear rightmost pixel column
+      ctx.clearRect(w - 1, 0, 1, h); 
 
-      // Draw Grid line (Center)
       ctx.fillStyle = '#334155';
       ctx.fillRect(w-1, h/2, 1, 1);
 
-      // Map Angle (-PI to PI) to Y (0 to h)
-      // Angle
       const yAngle = h/2 - (newPoint.value / (Math.PI/2)) * (h/2) * 0.8;
-      ctx.fillStyle = '#34d399'; // Green for Angle
+      ctx.fillStyle = '#34d399'; 
       ctx.fillRect(w-1, yAngle, 2, 2);
 
-      // Velocity
       const yVel = h/2 - (newPoint.secondaryValue! / 5) * (h/2) * 0.8;
-      ctx.fillStyle = '#60a5fa'; // Blue for Velocity
+      ctx.fillStyle = '#60a5fa'; 
       ctx.fillRect(w-1, yVel, 2, 2);
   };
 
@@ -152,7 +146,6 @@ export const PendulumLab: React.FC<PendulumLabProps> = ({ lang }) => {
     setDataPoints([]);
     setTraceHistory([]);
     setAiAnalysis('');
-    // Clear Graph
     const canvas = graphCanvasRef.current;
     if (canvas) {
         const ctx = canvas.getContext('2d');
@@ -176,9 +169,9 @@ export const PendulumLab: React.FC<PendulumLabProps> = ({ lang }) => {
   };
 
   return (
-    <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 overflow-hidden bg-slate-950">
+    <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 overflow-hidden bg-slate-950 text-slate-100">
       
-      {/* SVG DEFINITIONS */}
+      {/* SVG DEFINITIONS for Realistic Materials */}
       <svg width="0" height="0">
         <defs>
           <radialGradient id="gradSteel" cx="30%" cy="30%" r="70%">
@@ -317,7 +310,7 @@ export const PendulumLab: React.FC<PendulumLabProps> = ({ lang }) => {
                            </>
                         )}
 
-                        {/* Bob Circle */}
+                        {/* Bob Circle with Gradient */}
                         <circle 
                           r={Math.min(30, mass * 8 + 10)} 
                           fill={currentMaterial.color} 
@@ -405,7 +398,7 @@ export const PendulumLab: React.FC<PendulumLabProps> = ({ lang }) => {
            </div>
         </div>
 
-        {/* Phase Space (Existing but styled) */}
+        {/* Phase Space */}
         <div className="bg-lab-card border border-slate-700 rounded-2xl p-4 flex-1 overflow-hidden flex flex-col shadow-lg">
            <h3 className="font-bold text-slate-300 mb-2 flex items-center gap-2 text-xs uppercase">
              <Activity size={14} /> Phase Portrait
@@ -426,7 +419,7 @@ export const PendulumLab: React.FC<PendulumLabProps> = ({ lang }) => {
               </div>
            </div>
 
-           {/* AI Analysis */}
+           {/* AI Analysis with Scrollbar */}
            <div className="mt-4 pt-4 border-t border-slate-700">
               {aiAnalysis ? (
                 <div className="bg-purple-900/30 border border-purple-500/30 rounded-xl p-3 text-sm text-slate-200 relative animate-in slide-in-from-bottom-2">
@@ -434,6 +427,7 @@ export const PendulumLab: React.FC<PendulumLabProps> = ({ lang }) => {
                      <div className="flex items-center gap-2 text-purple-400 text-xs font-bold"><Sparkles size={12}/> AI Insight</div>
                      <button onClick={() => setAiAnalysis('')} className="text-slate-500 hover:text-white transition-colors"><X size={14}/></button>
                   </div>
+                  {/* ADDED SCROLLBAR HERE */}
                   <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                      <p className="whitespace-pre-wrap text-xs leading-relaxed">{aiAnalysis}</p>
                   </div>

@@ -98,9 +98,7 @@ export const generatePhysicsVideo = async (
     });
 
     // 2. Poll for completion
-    // Note: In a real app, you might want to offload this or use a more robust polling hook
     while (!operation.done) {
-      // Wait 5 seconds between polls
       await new Promise(resolve => setTimeout(resolve, 5000));
       operation = await ai.operations.getVideosOperation({ operation: operation });
     }
@@ -128,7 +126,7 @@ export const analyzeExperimentData = async (
   const ai = getAI();
   
   const langInstruction = language === 'vi' 
-    ? "CRITICAL: Respond COMPLETELY in VIETNAMESE (Tiếng Việt). Do not use English."
+    ? "IMPORTANT: Respose MUST be in VIETNAMESE (Tiếng Việt). Do NOT answer in English."
     : "Respond in English.";
 
   const prompt = `

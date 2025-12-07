@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Settings, Play, Pause, RotateCcw, Link, Scale, TrendingUp, Cpu, Loader2, Sparkles, X } from 'lucide-react';
+import { Play, Pause, RotateCcw, Link, Loader2, Sparkles, X } from 'lucide-react';
 import { analyzeExperimentData } from '../services/gemini';
 import { Language } from '../types';
 
@@ -20,75 +20,66 @@ export const MouldLab: React.FC<MouldLabProps> = ({ lang }) => {
     const reqRef = useRef(0);
     const timeRef = useRef(0);
 
-    // Physics Simulation (Bead based visual)
     const renderChain = useCallback((ctx: CanvasRenderingContext2D, W: number, H: number, t: number) => {
         const centerX = W / 2;
         const basinY = H - basinHeight;
         
-        // Calculate physics-based height
         const V_exit = Math.sqrt(2 * 9.8 * (basinHeight / 10));
         const F_uplift = chainMass * V_exit * V_exit / 10;
         const maxRise = Math.min(120, Math.max(0, F_uplift * 2 * stiffness / 10 * 1.5));
         
-        // Dynamic rise based on time
         const currentRise = isRunning ? Math.min(maxRise, t * 50) : 0;
         
-        // Define path points for the chain (Bezier curve approximation)
         const startX = centerX - 20;
-        const startY = basinY + 40; // Inside beaker
+        const startY = basinY + 40; 
         const peakX = centerX;
         const peakY = basinY - currentRise;
         const endX = centerX + 60;
-        const endY = H + 50; // Off screen
+        const endY = H + 50; 
         
-        // Draw Beaker (Glass effect)
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        // Draw Glass Beaker
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.rect(centerX - 50, basinY, 100, H - basinY);
         ctx.fill();
         ctx.stroke();
-        // Rim
+        
+        // Beaker Reflections
+        ctx.beginPath();
+        ctx.moveTo(centerX - 40, basinY + 20);
+        ctx.lineTo(centerX - 40, H - 20);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.stroke();
+
         ctx.beginPath();
         ctx.ellipse(centerX, basinY, 50, 10, 0, 0, Math.PI * 2);
         ctx.stroke();
         
-        // Draw Beads along the path
-        const numBeads = 100;
+        const numBeads = 150;
         const beadColor = '#f59e0b';
         
-        // Simple parametric curve for the fountain shape
         for (let i = 0; i < numBeads; i++) {
             const progress = (i + t * 20) % numBeads / numBeads; 
             let x, y;
             
-            // Piecewise path: Inside -> Peak -> Floor
             if (progress < 0.3) {
-                 // Rising phase
                  const p = progress / 0.3;
                  x = startX + (peakX - startX) * p;
                  y = startY + (peakY - startY) * Math.sin(p * Math.PI / 2);
             } else {
-                 // Falling phase
                  const p = (progress - 0.3) / 0.7;
                  x = peakX + (endX - peakX) * p;
-                 y = peakY + (endY - peakY) * p * p; // Gravity acceleration approx
+                 y = peakY + (endY - peakY) * p * p; 
             }
 
-            // Draw Bead
             ctx.fillStyle = beadColor;
             ctx.beginPath();
             ctx.arc(x, y, 3, 0, Math.PI * 2);
             ctx.fill();
-            
-            // Draw Link
-            if (i > 0) {
-                 // (Simplified: just dots for now to simulate rapid motion blur)
-            }
         }
         
-        // Static pile inside
         ctx.fillStyle = '#b45309';
         ctx.beginPath();
         ctx.ellipse(centerX, H - 20, 40, 20, 0, 0, Math.PI * 2);
@@ -155,9 +146,11 @@ export const MouldLab: React.FC<MouldLabProps> = ({ lang }) => {
                       {isAnalyzing ? <Loader2 className="animate-spin" size={14}/> : <Sparkles size={14}/>} AI Analysis
                    </button>
                 ) : (
-                    <div className="bg-indigo-900/30 p-2 rounded border border-indigo-500/30 text-xs relative mt-2 max-h-60 overflow-y-auto custom-scrollbar">
+                    <div className="bg-indigo-900/30 p-2 rounded border border-indigo-500/30 text-xs relative mt-2">
                        <button onClick={() => setAiAnalysis('')} className="absolute top-1 right-1"><X size={12}/></button>
-                       <p className="whitespace-pre-wrap">{aiAnalysis}</p>
+                       <div className="max-h-60 overflow-y-auto custom-scrollbar pr-2">
+                           <p className="whitespace-pre-wrap">{aiAnalysis}</p>
+                       </div>
                     </div>
                 )}
             </div>

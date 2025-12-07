@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Settings, Play, Pause, RotateCcw, Plus, Minus, Send, Zap, Gavel, Droplet, Box, Scale, Sparkles, Loader2, X } from 'lucide-react';
+import { Settings, Play, Pause, RotateCcw, Send, Zap, Gavel, Droplet, Triangle, Sparkles, Loader2, X, Move, ChevronDown, ChevronUp, Activity, Ruler, ArrowDown, ArrowUp, Plus, Minus } from 'lucide-react';
 import { calculateInclinedForces } from '../services/physics';
 import { analyzeExperimentData } from '../services/gemini';
 import { AppMode, Language } from '../types';
@@ -10,9 +10,7 @@ interface MechanicsLabProps {
   lang: Language;
 }
 
-// --- SUB-COMPONENTS FROM USER CODE ---
-
-// Simplified N-Body Physics (Euler/Verlet Integration)
+// --- ORBITS LAB ---
 class Body {
     id: number;
     mass: number;
@@ -44,20 +42,19 @@ class Body {
 const MechanicsOrbits = ({ lang }: { lang: Language }) => {
     const [isRunning, setIsRunning] = useState(false);
     const [bodies, setBodies] = useState<Body[]>([]);
-    const [G, setG] = useState(0.5); // Hằng số hấp dẫn
-    const [inversePower, setInversePower] = useState(2); // Luật nghịch đảo (1/r^2)
+    const [G, setG] = useState(0.5);
+    const [inversePower, setInversePower] = useState(2);
     const [selectedBodyId, setSelectedBodyId] = useState<number | null>(null);
     const [aiAnalysis, setAiAnalysis] = useState<string>('');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const reqRef = useRef(0);
-    const dt = 0.05; // Time step
+    const dt = 0.05;
 
     useEffect(() => {
-        // Initial setup
         const initialBodies = [
-            new Body(1, 100, 400, 250, 0, 0, '#f59e0b'), // Central Star
+            new Body(1, 100, 400, 250, 0, 0, '#f59e0b'), // Star
             new Body(2, 5, 550, 250, 0, 1.5, '#3b82f6'),   // Planet 1
             new Body(3, 2, 650, 250, 0, 1.0, '#10b981'),   // Planet 2
         ];
@@ -68,19 +65,15 @@ const MechanicsOrbits = ({ lang }: { lang: Language }) => {
         const newBodies = currentBodies.map(b => {
             const nb = new Body(b.id, b.mass, b.x, b.y, b.vx, b.vy, b.color);
             nb.trail = [...b.trail];
-            nb.thrustForce = b.thrustForce; // Keep thrust until applied
+            nb.thrustForce = b.thrustForce;
             return nb;
         });
         
-        // 1. Calculate Forces (N-Body)
         newBodies.forEach(bodyA => {
             bodyA.ax = 0;
             bodyA.ay = 0;
-            
-            // Add Thrust Force (Impulse applied directly to acceleration for simplicity in this tick)
             bodyA.ax += bodyA.thrustForce.x;
             bodyA.ay += bodyA.thrustForce.y;
-            // Reset thrust after application
             if(bodyA.thrustForce.x !== 0 || bodyA.thrustForce.y !== 0) {
                bodyA.thrustForce = {x: 0, y: 0};
             }
@@ -91,34 +84,26 @@ const MechanicsOrbits = ({ lang }: { lang: Language }) => {
                     const dy = bodyB.y - bodyA.y;
                     const distSq = dx * dx + dy * dy;
                     const dist = Math.sqrt(distSq);
-                    
-                    if (dist < 5) return; // Avoid singularity
-                    
-                    // Custom Inverse Power Law
+                    if (dist < 5) return;
                     const forceMag = G * bodyB.mass / (dist ** inversePower); 
-                    
                     bodyA.ax += forceMag * dx / dist;
                     bodyA.ay += forceMag * dy / dist;
                 }
             });
         });
 
-        // 2. Integration (Euler)
         newBodies.forEach(body => {
             body.vx += body.ax * dt;
             body.vy += body.ay * dt;
             body.x += body.vx * dt;
             body.y += body.vy * dt;
-            
-            // Update Trail
             body.trail.push({x: body.x, y: body.y});
             if (body.trail.length > 500) body.trail.shift();
         });
 
         return newBodies;
-    }, [G, inversePower, dt]);
+    }, [G, inversePower]);
 
-    // Draw Function
     const drawSimulation = useCallback((currentBodies: Body[]) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -130,10 +115,14 @@ const MechanicsOrbits = ({ lang }: { lang: Language }) => {
         ctx.fillStyle = '#0f172a';
         ctx.fillRect(0, 0, W, H);
         
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 1;
+        for(let i=0; i<W; i+=50) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,H); ctx.stroke();}
+        for(let i=0; i<H; i+=50) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(W,i); ctx.stroke();}
+
         currentBodies.forEach(body => {
-            // Draw Trail
-            ctx.strokeStyle = body.color + '50'; // Transparent trail
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = body.color + '50';
+            ctx.lineWidth = 2;
             ctx.beginPath();
             body.trail.forEach((p, i) => {
                 if (i === 0) ctx.moveTo(p.x, p.y);
@@ -141,34 +130,33 @@ const MechanicsOrbits = ({ lang }: { lang: Language }) => {
             });
             ctx.stroke();
 
-            // Draw Body
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = body.color;
             ctx.fillStyle = body.color;
             ctx.beginPath();
-            const radius = Math.max(3, body.mass / 10);
+            const radius = Math.max(3, body.mass / 8);
             ctx.arc(body.x, body.y, radius, 0, Math.PI * 2);
             ctx.fill();
+            ctx.shadowBlur = 0;
             
-            // Draw Gravitational Vector (Simplified)
-            ctx.strokeStyle = '#34d399';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(body.x, body.y);
-            ctx.lineTo(body.x + body.ax * 100, body.y + body.ay * 100);
-            ctx.stroke();
-            
-            // Highlight selected body
             if (body.id === selectedBodyId) {
                 ctx.strokeStyle = 'white';
                 ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(body.x, body.y, radius + 5, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                ctx.strokeStyle = '#34d399';
+                ctx.beginPath();
+                ctx.moveTo(body.x, body.y);
+                ctx.lineTo(body.x + body.vx * 20, body.y + body.vy * 20);
                 ctx.stroke();
             }
         });
     }, [selectedBodyId]);
 
-    // Animation Loop
     useEffect(() => {
         if (!isRunning) return;
-
         const animate = () => {
             setBodies(prevBodies => updatePhysics(prevBodies));
         };
@@ -179,31 +167,17 @@ const MechanicsOrbits = ({ lang }: { lang: Language }) => {
         return () => cancelAnimationFrame(reqRef.current);
     }, [isRunning, updatePhysics]);
 
-    // Separate Draw Loop
     useEffect(() => {
         drawSimulation(bodies);
     }, [bodies, drawSimulation]);
     
-    // UI Handlers
-    const handleReset = () => {
-        setIsRunning(false);
-        const initialBodies = [
-            new Body(1, 100, 400, 250, 0, 0, '#f59e0b'), 
-            new Body(2, 5, 550, 250, 0, 1.5, '#3b82f6'), 
-            new Body(3, 2, 650, 250, 0, 1.0, '#10b981'),
-        ];
-        setBodies(initialBodies);
-        drawSimulation(initialBodies);
-        setAiAnalysis('');
-    };
-    
-    const handleApplyThrust = (forceX: number, forceY: number) => {
+    const handleApplyThrust = (fx: number, fy: number) => {
         if (!selectedBodyId) return;
         setBodies(prev => prev.map(body => {
             if (body.id === selectedBodyId) {
                 const nb = new Body(body.id, body.mass, body.x, body.y, body.vx, body.vy, body.color);
                 nb.trail = body.trail;
-                nb.thrustForce = {x: forceX, y: forceY};
+                nb.thrustForce = {x: fx, y: fy};
                 nb.ax = body.ax; nb.ay = body.ay;
                 return nb;
             }
@@ -212,6 +186,16 @@ const MechanicsOrbits = ({ lang }: { lang: Language }) => {
     };
     
     const selectedBody = bodies.find(b => b.id === selectedBodyId);
+    
+    // Telemetry Calculations
+    const getTelemetry = () => {
+        if (!selectedBody) return null;
+        const centralStar = bodies.find(b => b.id === 1);
+        const distToStar = centralStar ? Math.sqrt((selectedBody.x - centralStar.x)**2 + (selectedBody.y - centralStar.y)**2) : 0;
+        const speed = Math.sqrt(selectedBody.vx**2 + selectedBody.vy**2);
+        return { dist: distToStar, speed };
+    };
+    const telemetry = getTelemetry();
 
     const handleAnalyze = async () => {
         setIsAnalyzing(true);
@@ -223,161 +207,161 @@ const MechanicsOrbits = ({ lang }: { lang: Language }) => {
 
     return (
         <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 bg-slate-900 text-slate-100 overflow-hidden">
-            
-            {/* CỘT THAM SỐ (LEFT PANEL) */}
             <div className="lg:col-span-3 bg-slate-800 border border-slate-700 rounded-2xl p-4 flex flex-col gap-4 overflow-y-auto custom-scrollbar">
-                <div className="flex items-center gap-2 text-slate-300 font-bold border-b border-slate-700 pb-2 flex-shrink-0">
-                    <Gavel size={20} className="text-orange-500" /> Luật Vật Lý & Điều Khiển
+                <div className="flex items-center gap-2 text-slate-300 font-bold border-b border-slate-700 pb-2">
+                    <Gavel size={20} className="text-orange-500" /> Hệ Thống Điều Khiển
                 </div>
                 
-                {/* Bộ Điều khiển Hấp dẫn */}
-                <div className="p-3 bg-slate-900 rounded-xl shadow-inner space-y-3">
+                <div className="p-3 bg-slate-900 rounded-xl space-y-3">
                    <label className="text-xs text-slate-400 block mb-1">Hằng số Hấp dẫn (G) ({G.toFixed(2)})</label>
-                   <input type="range" min="0.1" max="1.0" step="0.05" value={G} onChange={(e) => setG(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-orange-500 cursor-pointer" />
-                   
-                   <label className="text-xs text-slate-400 block mb-1">Luật Nghịch đảo ({inversePower.toFixed(1)}): $1/r^{inversePower.toFixed(1)}$</label>
-                   <input type="range" min="1.0" max="3.0" step="0.1" value={inversePower} onChange={(e) => setInversePower(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-red-500 cursor-pointer" />
-                   <p className='text-xs text-red-400 italic'>$1/r^2$ là hấp dẫn Newton. $1/r^3$ $\rightarrow$ Quỹ đạo hỗn loạn/xoắn.</p>
+                   <input type="range" min="0.1" max="1.0" step="0.05" value={G} onChange={(e) => setG(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-orange-500" />
+                   <label className="text-xs text-slate-400 block mb-1">Luật Nghịch đảo ({inversePower.toFixed(1)})</label>
+                   <input type="range" min="1.0" max="3.0" step="0.1" value={inversePower} onChange={(e) => setInversePower(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-red-500" />
                 </div>
 
-                {/* Công cụ Động cơ Phản lực (Thruster Tool) */}
-                <div className="p-3 bg-slate-900 rounded-xl shadow-inner space-y-3">
+                <div className="p-3 bg-slate-900 rounded-xl space-y-3">
                    <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-1"><Send size={14}/> Động Cơ Phản Lực</h3>
-                   <select value={selectedBodyId || ''} onChange={(e) => setSelectedBodyId(Number(e.target.value))} className="w-full p-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:ring-sky-500 focus:border-sky-500 text-sm">
+                   <select value={selectedBodyId || ''} onChange={(e) => setSelectedBodyId(Number(e.target.value))} className="w-full p-2 rounded-lg bg-slate-700 text-sm">
                        <option value="">-- Chọn Thiên thể --</option>
-                       {bodies.map(b => <option key={b.id} value={b.id}>Body {b.id} (M={b.mass})</option>)}
+                       {bodies.map(b => <option key={b.id} value={b.id}>Thiên thể {b.id} ({b.id === 1 ? 'Sao' : 'Hành tinh'})</option>)}
                    </select>
-                   
                    <div className="grid grid-cols-3 gap-1">
-                       <button onClick={() => handleApplyThrust(0, -5)} disabled={!selectedBodyId} className="col-span-3 py-1 bg-sky-600 hover:bg-sky-500 rounded-lg text-xs disabled:opacity-30">Lên</button>
-                       <button onClick={() => handleApplyThrust(-5, 0)} disabled={!selectedBodyId} className="py-1 bg-sky-600 hover:bg-sky-500 rounded-lg text-xs disabled:opacity-30">Trái</button>
-                       <button onClick={() => handleApplyThrust(0, 0)} disabled={!selectedBodyId} className="py-1 bg-slate-500 rounded-lg text-xs disabled:opacity-30">Reset</button>
-                       <button onClick={() => handleApplyThrust(5, 0)} disabled={!selectedBodyId} className="py-1 bg-sky-600 hover:bg-sky-500 rounded-lg text-xs disabled:opacity-30">Phải</button>
-                       <button onClick={() => handleApplyThrust(0, 5)} disabled={!selectedBodyId} className="col-span-3 py-1 bg-sky-600 hover:bg-sky-500 rounded-lg text-xs disabled:opacity-30">Xuống</button>
+                       <div/>
+                       <button onClick={() => handleApplyThrust(0, -5)} disabled={!selectedBodyId} className="py-1 bg-sky-600 rounded text-xs hover:bg-sky-500"><ArrowUp size={12} className="mx-auto"/></button>
+                       <div/>
+                       <button onClick={() => handleApplyThrust(-5, 0)} disabled={!selectedBodyId} className="py-1 bg-sky-600 rounded text-xs hover:bg-sky-500"><ArrowUp size={12} className="-rotate-90 mx-auto"/></button>
+                       <div className="flex items-center justify-center text-xs text-slate-500">PUSH</div>
+                       <button onClick={() => handleApplyThrust(5, 0)} disabled={!selectedBodyId} className="py-1 bg-sky-600 rounded text-xs hover:bg-sky-500"><ArrowUp size={12} className="rotate-90 mx-auto"/></button>
+                       <div/>
+                       <button onClick={() => handleApplyThrust(0, 5)} disabled={!selectedBodyId} className="py-1 bg-sky-600 rounded text-xs hover:bg-sky-500"><ArrowDown size={12} className="mx-auto"/></button>
+                       <div/>
                    </div>
                 </div>
 
-                {/* Bảng phân tích Quỹ đạo */}
-                <div className="p-3 bg-slate-700 rounded-xl shadow-lg border-l-4 border-teal-400 mt-auto">
-                    <p className="text-sm font-bold text-white mb-1"><Zap size={14} className='inline mr-1'/> Phân Tích Quỹ Đạo</p>
-                    {selectedBody ? (
-                        <div className='text-xs space-y-1'>
-                            <p>Vận tốc: V=({selectedBody.vx.toFixed(2)}, {selectedBody.vy.toFixed(2)})</p>
-                            <p>Gia tốc: A=({selectedBody.ax.toFixed(2)}, {selectedBody.ay.toFixed(2)})</p>
-                            <p>Độ lệch tâm (E): $0.5$ (Giả lập)</p>
-                            <p className='text-yellow-300'>Định luật Kepler 2: Vận tốc khu vực tăng gần Sao Trung tâm.</p>
-                        </div>
-                    ) : (
-                        <p className='text-xs text-slate-400 italic'>Chọn một thiên thể để xem thông số.</p>
-                    )}
-                </div>
-
                 <div className="pt-4 border-t border-slate-700 mt-auto flex flex-col gap-4">
-                    {aiAnalysis ? (
-                        <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-3 text-sm text-slate-200 relative animate-in slide-in-from-bottom-2 flex flex-col">
-                        <div className="flex justify-between items-start mb-2 sticky top-0">
-                            <div className="flex items-center gap-2 text-purple-400 text-xs font-bold"><Sparkles size={12}/> AI Analysis</div>
-                            <button onClick={() => setAiAnalysis('')} className="text-slate-500 hover:text-white p-1 rounded hover:bg-white/10 transition-colors"><X size={14}/></button>
+                     {aiAnalysis ? (
+                        <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-3 text-sm text-slate-200 relative">
+                            <button onClick={() => setAiAnalysis('')} className="absolute top-1 right-1 text-slate-400"><X size={14}/></button>
+                            <div className="max-h-60 overflow-y-auto custom-scrollbar">
+                                <p className="whitespace-pre-wrap">{aiAnalysis}</p>
+                            </div>
                         </div>
-                        <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                            <p className="whitespace-pre-wrap text-xs leading-relaxed">{aiAnalysis}</p>
-                        </div>
-                        </div>
-                    ) : (
-                        <button 
-                        onClick={handleAnalyze}
-                        disabled={isAnalyzing}
-                        className="w-full py-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 rounded-xl text-slate-300 font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                        {isAnalyzing ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
-                        Phân Tích AI
+                     ) : (
+                        <button onClick={handleAnalyze} disabled={isAnalyzing} className="w-full py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs flex items-center justify-center gap-2">
+                           {isAnalyzing ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />} AI Phân Tích
                         </button>
-                    )}
-
-                    {/* Điều khiển Mô phỏng */}
-                    <div className="flex gap-2 flex-shrink-0">
-                        <button onClick={() => setIsRunning(!isRunning)} className="flex-1 bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
-                            {isRunning ? <Pause size={16}/> : <Play size={16}/>} {isRunning ? 'Tạm Dừng' : 'Chạy Mô Phỏng'}
-                        </button>
-                        <button onClick={handleReset} className="p-2 bg-slate-700 rounded-xl hover:bg-slate-600 text-white transition-colors" title="Thiết Lập Lại"><RotateCcw size={16}/></button>
-                    </div>
+                     )}
+                     <button onClick={() => setIsRunning(!isRunning)} className="flex-1 bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2">
+                         {isRunning ? <Pause size={16}/> : <Play size={16}/>} {isRunning ? 'Tạm Dừng' : 'Chạy'}
+                     </button>
                 </div>
             </div>
 
-            {/* CỘT MÔ PHỎNG (RIGHT PANEL) */}
             <div className="lg:col-span-9 flex flex-col gap-4">
-                
-                {/* Simulation Canvas */}
                 <div className="flex-1 bg-black rounded-xl border border-slate-700 overflow-hidden relative shadow-2xl">
                     <canvas ref={canvasRef} width={800} height={500} className="w-full h-full object-contain" />
-                    <div className="absolute top-4 left-4 text-sm text-slate-400">
-                        Mô phỏng Hệ {bodies.length}-Thiên thể. Luật Hấp dẫn: $1/r^{inversePower.toFixed(1)}$
-                    </div>
-                    {/* Barycenter Visualization (Tâm Hợp) */}
-                    <div className="absolute top-1/2 left-1/2 w-2 h-2 rounded-full bg-white/50 -translate-x-1/2 -translate-y-1/2 animate-pulse" title="Tâm Hợp (Barycenter)"></div>
+                    {selectedBody && telemetry && (
+                        <div className="absolute top-4 right-4 bg-slate-900/80 border border-slate-700 p-4 rounded-lg backdrop-blur-sm w-64">
+                            <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full" style={{backgroundColor: selectedBody.color}}></span>
+                                Telemetry: Body {selectedBody.id}
+                            </h4>
+                            <div className="space-y-2 text-xs font-mono text-slate-300">
+                                <div className="flex justify-between"><span>Speed:</span> <span className="text-emerald-400">{telemetry.speed.toFixed(2)} px/t</span></div>
+                                <div className="flex justify-between"><span>Dist to Star:</span> <span className="text-blue-400">{telemetry.dist.toFixed(1)} px</span></div>
+                                <div className="flex justify-between"><span>Vector X:</span> <span>{selectedBody.vx.toFixed(3)}</span></div>
+                                <div className="flex justify-between"><span>Vector Y:</span> <span>{selectedBody.vy.toFixed(3)}</span></div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
     );
 };
 
+// --- FLUIDS LAB ---
 const FluidsArchimedesLab = ({ lang }: { lang: Language }) => {
     const [isRunning, setIsRunning] = useState(false);
-    const [fluidDensity, setFluidDensity] = useState(1000); // Mật độ chất lỏng (kg/m^3)
-    const [viscosity, setViscosity] = useState(0.1); // Độ nhớt
-    const [objectDensity, setObjectDensity] = useState(500); // Mật độ vật thể
-    const [objectVolume, setObjectVolume] = useState(1); // Thể tích vật thể
-    const [time, setTime] = useState(0);
-    const [flowMode, setFlowMode] = useState('buoyancy'); // buoyancy or bernoulli
+    const [fluidDensity, setFluidDensity] = useState(1000); 
+    const [viscosity, setViscosity] = useState(0.1); 
+    const [objectDensity, setObjectDensity] = useState(500); 
+    const [objectVolume, setObjectVolume] = useState(1); 
+    const [objY, setObjY] = useState(50); 
+    const [objVy, setObjVy] = useState(0); 
+    const [splashParticles, setSplashParticles] = useState<{x: number, y: number, vx: number, vy: number, life: number}[]>([]);
+    const [waterLevelOffset, setWaterLevelOffset] = useState(0);
+
     const [aiAnalysis, setAiAnalysis] = useState<string>('');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const reqRef = useRef(0);
-    
-    const g = 9.8; // Trọng lực
+    const g = 9.8; 
+    const baseWaterLevel = 300;
 
-    // Object State (for Buoyancy Mode)
-    const [objY, setObjY] = useState(50); // Vị trí Y của vật thể
-    const [objVy, setObjVy] = useState(0); // Vận tốc Y của vật thể
+    const updatePhysics = useCallback(() => {
+        // Particles
+        setSplashParticles(prev => prev.map(p => ({
+            x: p.x + p.vx,
+            y: p.y + p.vy,
+            vx: p.vx,
+            vy: p.vy + 0.5, // gravity
+            life: p.life - 1
+        })).filter(p => p.life > 0));
+        
+        // Water Level relaxation
+        setWaterLevelOffset(prev => prev * 0.95);
 
-    // Physics Calculation (Buoyancy/Falling)
-    const updateBuoyancy = useCallback(() => {
+        // Object Physics
         const objMass = objectDensity * objectVolume;
-        const buoyancyForce = fluidDensity * objectVolume * g; // Lực nổi
-        const gravityForce = objMass * g; // Trọng lực
+        let forceBuoyancy = 0;
+        let forceDrag = 0;
         
-        // Lực cản (Drag Force - simplified)
-        const dragForce = viscosity * objVy * 0.5; 
-        
-        const netForce = buoyancyForce - gravityForce - dragForce;
-        const objAy = netForce / objMass;
+        // Check immersion
+        const objH = objectVolume * 50; 
+        const submergedH = Math.max(0, Math.min(objH, (objY + objH) - (baseWaterLevel + waterLevelOffset)));
+        const submergedRatio = submergedH / objH;
+
+        if (submergedRatio > 0) {
+            forceBuoyancy = fluidDensity * objectVolume * g * submergedRatio;
+            forceDrag = 0.5 * fluidDensity * objVy * Math.abs(objVy) * viscosity * objectVolume * 0.1; 
+        }
+
+        const forceGravity = objMass * g;
+        const realAcc = (forceGravity - forceBuoyancy - (objVy * Math.abs(objVy) * viscosity * 5)) / objMass;
         
         const dt = 0.05;
-        const newVy = objVy + objAy * dt;
-        let newY = objY + newVy * dt;
-
-        // Check boundaries (water level at Y=300)
-        if (newY >= 300) {
-            newY = 300;
-            // Damping/Bounce logic here if needed
-            if (objectDensity > fluidDensity) {
-                // Sinking to the bottom (Y=450)
-                newY = Math.min(450, newY + newVy * dt);
-            } else {
-                // Floating at the surface
-                newY = 300 - 50; // Object size is 50px
-                setObjVy(0);
-                return;
-            }
-        }
+        let nextVy = objVy + realAcc * dt;
+        let nextY = objY + nextVy * dt;
         
-        setObjVy(newVy);
-        setObjY(newY);
+        // Splash Trigger
+        if (objY + objH < baseWaterLevel && nextY + objH >= baseWaterLevel) {
+            const splashCount = Math.min(20, Math.abs(nextVy) * 2);
+            const newParticles = [];
+            for(let i=0; i<splashCount; i++) {
+                newParticles.push({
+                    x: 400 + (Math.random()-0.5) * objH,
+                    y: baseWaterLevel,
+                    vx: (Math.random()-0.5) * 10,
+                    vy: -Math.random() * 10 - Math.abs(nextVy)*0.5,
+                    life: 30 + Math.random() * 20
+                });
+            }
+            setSplashParticles(prev => [...prev, ...newParticles]);
+            setWaterLevelOffset(Math.min(20, Math.abs(nextVy) * 2));
+        }
 
-    }, [fluidDensity, viscosity, objectDensity, objectVolume, objY, objVy, g]);
+        if (nextY > 450 - objH) { 
+            nextY = 450 - objH;
+            nextVy = -nextVy * 0.2; 
+        }
 
-    // Draw Function
+        setObjVy(nextVy);
+        setObjY(nextY);
+
+    }, [fluidDensity, viscosity, objectDensity, objectVolume, objY, objVy, waterLevelOffset]);
+
     const drawSimulation = useCallback(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -385,101 +369,63 @@ const FluidsArchimedesLab = ({ lang }: { lang: Language }) => {
         if (!ctx) return;
         const W = canvas.width;
         const H = canvas.height;
-        const waterLevel = 300;
         const centerX = W / 2;
+        const currentWaterLevel = baseWaterLevel + waterLevelOffset;
 
         ctx.fillStyle = '#0f172a';
         ctx.fillRect(0, 0, W, H);
         
-        // 1. Draw Fluid (Chất lỏng)
-        // Fluid color based on density and viscosity
-        const fluidColor = `rgba(30, 64, 175, ${fluidDensity / 1500 * 0.8})`;
-        ctx.fillStyle = fluidColor;
-        ctx.fillRect(0, waterLevel, W, H - waterLevel);
+        const gradient = ctx.createLinearGradient(0, currentWaterLevel, 0, H);
+        gradient.addColorStop(0, `rgba(59, 130, 246, 0.6)`);
+        gradient.addColorStop(1, `rgba(30, 64, 175, 0.9)`);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, currentWaterLevel, W, H - currentWaterLevel);
         
-        // Water surface
-        ctx.strokeStyle = '#60a5fa';
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#93c5fd';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(0, waterLevel);
-        ctx.lineTo(W, waterLevel);
+        ctx.moveTo(0, currentWaterLevel);
+        for(let x=0; x<=W; x+=10) {
+            ctx.lineTo(x, currentWaterLevel + Math.sin(x*0.05 + Date.now()*0.005)*3);
+        }
         ctx.stroke();
 
-        if (flowMode === 'buoyancy') {
-            // 2. Draw Object (Vật thể)
-            const objSize = objectVolume * 50; // Visual size
-            const objColor = objectDensity > fluidDensity ? '#ef4444' : '#34d399';
-            ctx.fillStyle = objColor;
-            ctx.fillRect(centerX - objSize / 2, objY, objSize, objSize);
-            ctx.strokeStyle = 'white';
-            ctx.strokeRect(centerX - objSize / 2, objY, objSize, objSize);
-
-            // 3. Draw Force Vectors
-            const mag = 10;
-            const F_b = fluidDensity * objectVolume * g * mag / 100;
-            const F_g = objectDensity * objectVolume * g * mag / 100;
-
-            // Buoyancy Force (Up)
-            ctx.strokeStyle = '#34d399';
-            ctx.lineWidth = 3;
+        const objSize = objectVolume * 50;
+        ctx.fillStyle = objectDensity < fluidDensity ? '#fbbf24' : '#ef4444'; 
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 2;
+        ctx.fillRect(centerX - objSize/2, objY, objSize, objSize);
+        ctx.strokeRect(centerX - objSize/2, objY, objSize, objSize);
+        
+        ctx.fillStyle = '#bae6fd';
+        splashParticles.forEach(p => {
             ctx.beginPath();
-            ctx.moveTo(centerX + 30, objY + objSize / 2);
-            ctx.lineTo(centerX + 30, objY + objSize / 2 - F_b);
-            ctx.stroke();
-            
-            // Gravity Force (Down)
-            ctx.strokeStyle = '#f87171';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(centerX - 30, objY + objSize / 2);
-            ctx.lineTo(centerX - 30, objY + objSize / 2 + F_g);
-            ctx.stroke();
-            
-            // Text annotations
-            ctx.fillStyle = '#34d399'; ctx.font = '12px Inter'; ctx.fillText('F_Nổi', centerX + 35, objY + objSize / 2 - F_b - 5);
-            ctx.fillStyle = '#f87171'; ctx.font = '12px Inter'; ctx.fillText('F_Trọng', centerX - 60, objY + objSize / 2 + F_g + 15);
+            ctx.arc(p.x, p.y, (p.life/50)*3, 0, Math.PI*2);
+            ctx.fill();
+        });
 
-        } else if (flowMode === 'bernoulli') {
-            // Bernoulli Flow Mode (Mock Venturi Tube)
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.fillRect(centerX - 100, 100, 200, 150);
-            
-            // Venturi Tube Shape
-            ctx.strokeStyle = 'white';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(centerX - 100, 150);
-            ctx.lineTo(centerX - 50, 150);
-            ctx.lineTo(centerX - 20, 100);
-            ctx.lineTo(centerX + 20, 100);
-            ctx.lineTo(centerX + 50, 150);
-            ctx.lineTo(centerX + 100, 150);
-            ctx.stroke();
-            
-            // Flow visualization (Velocity/Color Map)
-            ctx.fillStyle = '#3b82f6';
-            ctx.font = 'bold 12px Inter';
-            ctx.fillText('Áp suất cao (Tốc độ thấp)', centerX - 100, 90);
-            ctx.fillStyle = '#f59e0b';
-            ctx.fillText('Áp suất thấp (Tốc độ cao)', centerX - 40, 60);
-
+        const scale = 2;
+        ctx.strokeStyle = '#ef4444';
+        ctx.beginPath(); ctx.moveTo(centerX, objY+objSize/2); ctx.lineTo(centerX, objY+objSize/2 + (objectDensity*objectVolume*g/200)*scale); ctx.stroke();
+        if (objY + objSize > currentWaterLevel) {
+             const submerged = Math.min(objSize, (objY+objSize) - currentWaterLevel);
+             const bForce = fluidDensity * (submerged/objSize*objectVolume) * g;
+             ctx.strokeStyle = '#10b981';
+             ctx.beginPath(); ctx.moveTo(centerX-10, objY+objSize/2); ctx.lineTo(centerX-10, objY+objSize/2 - (bForce/200)*scale); ctx.stroke();
         }
 
-    }, [fluidDensity, objectDensity, objectVolume, objY, flowMode, g]);
+    }, [fluidDensity, objectDensity, objectVolume, objY, splashParticles, waterLevelOffset]);
 
-    // Animation Loop
     useEffect(() => {
-        if (!isRunning || flowMode !== 'buoyancy') return;
-
+        if (!isRunning) return;
         const animate = () => {
-            updateBuoyancy();
+            updatePhysics();
             drawSimulation();
             reqRef.current = requestAnimationFrame(animate);
         };
-
         reqRef.current = requestAnimationFrame(animate);
         return () => cancelAnimationFrame(reqRef.current);
-    }, [isRunning, updateBuoyancy, drawSimulation, flowMode]);
+    }, [isRunning, updatePhysics, drawSimulation]);
     
     useEffect(() => {
         drawSimulation();
@@ -489,175 +435,269 @@ const FluidsArchimedesLab = ({ lang }: { lang: Language }) => {
         setIsRunning(false);
         setObjY(50);
         setObjVy(0);
-        setTime(0);
+        setSplashParticles([]);
+        setWaterLevelOffset(0);
         drawSimulation();
-        setAiAnalysis('');
     };
 
     const handleAnalyze = async () => {
         setIsAnalyzing(true);
-        const summary = `Fluids: Mode=${flowMode}, Fluid Density=${fluidDensity}, Obj Density=${objectDensity}, Viscosity=${viscosity}`;
-        const result = await analyzeExperimentData("Archimedes Fluids", { flowMode, fluidDensity, objectDensity }, summary, lang);
+        const summary = `Fluids: Fluid Density=${fluidDensity}, Obj Density=${objectDensity}, Submerged=${objY > 250}, Velocity=${objVy.toFixed(2)}`;
+        const result = await analyzeExperimentData("Archimedes Fluids", { fluidDensity, objectDensity }, summary, lang);
         setAiAnalysis(result);
         setIsAnalyzing(false);
     };
 
     return (
         <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 bg-slate-900 text-slate-100 overflow-hidden">
-            
-            {/* CỘT THAM SỐ (LEFT PANEL) */}
-            <div className="lg:col-span-3 bg-slate-800 border border-slate-700 rounded-2xl p-4 flex flex-col gap-4 overflow-y-auto custom-scrollbar">
-                <div className="flex items-center gap-2 text-slate-300 font-bold border-b border-slate-700 pb-2 flex-shrink-0">
-                    <Droplet size={20} className="text-blue-500" /> Cấu Hình Chất Lỏng & Vật Thể
+            <div className="lg:col-span-3 bg-slate-800 border border-slate-700 rounded-2xl p-4 flex flex-col gap-4">
+                <div className="flex items-center gap-2 font-bold text-slate-300 border-b border-slate-700 pb-2">
+                    <Droplet size={20} className="text-blue-500" /> Tham Số Chất Lỏng
                 </div>
                 
-                {/* Mode Selector */}
-                <div className="p-3 bg-slate-900 rounded-xl shadow-inner">
-                    <label className="text-xs text-slate-400 block mb-2">Chế độ Mô phỏng</label>
-                    <select 
-                        value={flowMode} 
-                        onChange={(e) => setFlowMode(e.target.value)} 
-                        className="w-full p-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    >
-                        <option value="buoyancy">Lực Nổi Archimedes</option>
-                        <option value="bernoulli">Dòng Chảy Bernoulli</option>
-                    </select>
+                <div className="p-3 bg-slate-900 rounded-xl space-y-3">
+                   <label className="text-xs text-slate-400 block">Mật độ Chất lỏng ($\rho_f$) ({fluidDensity})</label>
+                   <input type="range" min="100" max="2000" step="50" value={fluidDensity} onChange={(e) => setFluidDensity(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-blue-500" />
+                   
+                   <label className="text-xs text-slate-400 block">Độ nhớt ($\eta$) ({viscosity})</label>
+                   <input type="range" min="0.01" max="0.5" step="0.01" value={viscosity} onChange={(e) => setViscosity(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-cyan-500" />
                 </div>
                 
-                {/* Control: Fluid Density */}
-                <div className="p-3 bg-slate-900 rounded-xl shadow-inner">
-                   <label className="text-xs text-slate-400 block mb-1">Mật độ Chất lỏng ($\rho_f$) ({fluidDensity.toFixed(0)} kg/m\u00b3)</label>
-                   <input type="range" min="100" max="2000" step="50" value={fluidDensity} onChange={(e) => setFluidDensity(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-blue-500 cursor-pointer" />
-                </div>
-                
-                {/* Control: Viscosity */}
-                <div className="p-3 bg-slate-900 rounded-xl shadow-inner">
-                   <label className="text-xs text-slate-400 block mb-1">Độ nhớt ($\eta$) ({viscosity.toFixed(2)})</label>
-                   <input type="range" min="0.01" max="1" step="0.05" value={viscosity} onChange={(e) => setViscosity(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-cyan-500 cursor-pointer" />
+                <div className="p-3 bg-slate-900 rounded-xl space-y-3 border-l-4 border-yellow-500">
+                    <h3 className="text-xs font-bold text-yellow-500">Vật Thể</h3>
+                    <label className="text-xs text-slate-400 block">Mật độ ($\rho_o$) ({objectDensity})</label>
+                    <input type="range" min="100" max="2000" step="50" value={objectDensity} onChange={(e) => setObjectDensity(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-yellow-500" />
+                    <p className={`text-xs font-bold ${objectDensity < fluidDensity ? 'text-green-400' : 'text-red-400'}`}>
+                       {objectDensity < fluidDensity ? 'SẼ NỔI' : 'SẼ CHÌM'}
+                    </p>
                 </div>
 
-                {/* Control: Object Density (Buoyancy Mode) */}
-                {flowMode === 'buoyancy' && (
-                    <div className="p-3 bg-slate-900 rounded-xl shadow-inner border-l-4 border-yellow-500">
-                       <label className="text-xs text-slate-400 block mb-1">Mật độ Vật thể ($\rho_o$) ({objectDensity.toFixed(0)} kg/m\u00b3)</label>
-                       <input type="range" min="100" max="2000" step="50" value={objectDensity} onChange={(e) => setObjectDensity(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-yellow-500 cursor-pointer" />
-                       <p className={`mt-1 text-xs font-bold ${objectDensity < fluidDensity ? 'text-green-400' : 'text-red-400'}`}>
-                           Vật thể sẽ {objectDensity < fluidDensity ? 'NỔI' : 'CHÌM'}
-                       </p>
-                    </div>
-                )}
-                
-                {/* Phân tích Lực nổi */}
-                <div className="p-3 bg-slate-700 rounded-xl shadow-lg border-l-4 border-white mt-auto">
-                    <p className="text-sm font-bold text-white mb-1"><Zap size={14} className='inline mr-1'/> Lực Nổi & Trọng Lực</p>
-                    <div className='text-xs space-y-1 font-mono'>
-                        <p className='text-green-400'>Lực Nổi ($F_b$): {(fluidDensity * objectVolume * g).toFixed(1)} N</p>
-                        <p className='text-red-400'>Trọng Lực ($F_g$): {(objectDensity * objectVolume * g).toFixed(1)} N</p>
+                <div className="p-3 bg-slate-700 rounded-xl mt-auto shadow-lg">
+                    <h4 className="text-xs font-bold text-white mb-2 flex items-center gap-2"><Activity size={14}/> Data Monitor</h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                        <div className="text-slate-400">Velocity:</div> <div className="text-right text-blue-300">{objVy.toFixed(2)} m/s</div>
+                        <div className="text-slate-400">F_net:</div> <div className="text-right text-purple-300">{((objectDensity*objectVolume*g) - (Math.min(1, (objY+objectVolume*50-baseWaterLevel)/(objectVolume*50))*fluidDensity*objectVolume*g)).toFixed(0)} N</div>
+                        <div className="text-slate-400">Depth:</div> <div className="text-right text-teal-300">{Math.max(0, objY - baseWaterLevel).toFixed(1)} px</div>
                     </div>
                 </div>
 
-                <div className="pt-4 border-t border-slate-700 mt-auto flex flex-col gap-4">
+                <div className="flex flex-col gap-2 mt-2">
                     {aiAnalysis ? (
-                        <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-3 text-sm text-slate-200 relative animate-in slide-in-from-bottom-2 flex flex-col">
-                        <div className="flex justify-between items-start mb-2 sticky top-0">
-                            <div className="flex items-center gap-2 text-purple-400 text-xs font-bold"><Sparkles size={12}/> AI Analysis</div>
-                            <button onClick={() => setAiAnalysis('')} className="text-slate-500 hover:text-white p-1 rounded hover:bg-white/10 transition-colors"><X size={14}/></button>
-                        </div>
-                        <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                            <p className="whitespace-pre-wrap text-xs leading-relaxed">{aiAnalysis}</p>
-                        </div>
+                        <div className="bg-purple-900/30 p-2 rounded text-xs relative">
+                           <button onClick={() => setAiAnalysis('')} className="absolute top-1 right-1"><X size={12}/></button>
+                           <div className="max-h-32 overflow-y-auto custom-scrollbar">
+                               {aiAnalysis}
+                           </div>
                         </div>
                     ) : (
-                        <button 
-                        onClick={handleAnalyze}
-                        disabled={isAnalyzing}
-                        className="w-full py-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 rounded-xl text-slate-300 font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                        {isAnalyzing ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
-                        Phân Tích AI
-                        </button>
+                         <button onClick={handleAnalyze} disabled={isAnalyzing} className="py-2 bg-indigo-600 rounded text-xs font-bold flex justify-center items-center gap-2">
+                             {isAnalyzing ? <Loader2 className="animate-spin" size={12}/> : <Sparkles size={12}/>} AI Phân Tích
+                         </button>
                     )}
-
-                    {/* Điều khiển Mô phỏng */}
-                    <div className="flex gap-2 flex-shrink-0">
-                        <button onClick={() => setIsRunning(!isRunning)} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50" disabled={flowMode !== 'buoyancy'}>
-                            {isRunning ? <Pause size={16}/> : <Play size={16}/>} {isRunning ? 'Tạm Dừng' : 'Thả Vật Thể'}
+                    <div className="flex gap-2">
+                        <button onClick={() => setIsRunning(!isRunning)} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2">
+                            {isRunning ? <Pause size={16}/> : <Play size={16}/>} {isRunning ? 'Dừng' : 'Thả'}
                         </button>
-                        <button onClick={handleReset} className="p-2 bg-slate-700 rounded-xl hover:bg-slate-600 text-white transition-colors" title="Thiết Lập Lại"><RotateCcw size={16}/></button>
+                        <button onClick={handleReset} className="p-2 bg-slate-700 rounded-xl hover:bg-slate-600 text-white"><RotateCcw size={16}/></button>
                     </div>
                 </div>
             </div>
 
-            {/* CỘT MÔ PHỎNG (RIGHT PANEL) */}
-            <div className="lg:col-span-9 flex flex-col gap-4">
-                
-                {/* Simulation Canvas */}
-                <div className="flex-1 bg-black rounded-xl border border-slate-700 overflow-hidden relative shadow-2xl">
-                    <canvas ref={canvasRef} width={800} height={500} className="w-full h-full object-contain" />
-                    <div className="absolute top-4 left-4 text-sm text-slate-400">
-                        {flowMode === 'buoyancy' ? 'Mô Phỏng Lực Nổi' : 'Phân Tích Dòng Chảy Bernoulli'}
-                    </div>
-                </div>
+            <div className="lg:col-span-9 bg-black rounded-xl border border-slate-700 overflow-hidden relative shadow-2xl">
+                <canvas ref={canvasRef} width={800} height={500} className="w-full h-full object-contain" />
             </div>
         </div>
     );
 };
 
-// --- PRESERVED INCLINED PLANE COMPONENT (Since not provided in new update) ---
+// --- INCLINED PLANE LAB ---
 const InclinedPlaneLab = ({ lang }: { lang: Language }) => {
     const [angle, setAngle] = useState(30);
     const [mass, setMass] = useState(5);
-    const [friction, setFriction] = useState(0.3);
-    const [blockPos, setBlockPos] = useState(0); 
+    const [frictionMu, setFrictionMu] = useState(0.3);
+    const [appliedForce, setAppliedForce] = useState(0); 
+    
     const [isRunning, setIsRunning] = useState(false);
+    const [time, setTime] = useState(0);
+    const [pos, setPos] = useState(0);
+    const [velocity, setVelocity] = useState(0);
+    
+    const [aiAnalysis, setAiAnalysis] = useState('');
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
     const reqRef = useRef(0);
 
-    const forces = calculateInclinedForces(mass, angle, friction);
-
+    const g = 9.81;
+    const rad = angle * Math.PI / 180;
+    const F_g = mass * g;
+    const F_gx = F_g * Math.sin(rad); 
+    const F_gy = F_g * Math.cos(rad); 
+    const Normal = F_gy;
+    const MaxFriction = Normal * frictionMu;
+    
     useEffect(() => {
         if (!isRunning) return;
-        const animate = () => {
-            if (forces.acceleration > 0) {
-               setBlockPos(p => Math.min(p + forces.acceleration * 0.05, 100));
+        
+        const dt = 0.02;
+        const update = () => {
+            let frictionForce = 0;
+            const netNonFriction = appliedForce - F_gx;
+            
+            if (Math.abs(velocity) < 0.01) {
+                if (Math.abs(netNonFriction) <= MaxFriction) {
+                    frictionForce = -netNonFriction; 
+                } else {
+                    frictionForce = -Math.sign(netNonFriction) * MaxFriction;
+                }
+            } else {
+                frictionForce = -Math.sign(velocity) * MaxFriction;
             }
-            reqRef.current = requestAnimationFrame(animate);
+            
+            const F_net = netNonFriction + frictionForce;
+            const acc = F_net / mass;
+            
+            setVelocity(v => v + acc * dt);
+            setPos(p => {
+                const next = p + velocity * dt;
+                if (next < 0) { setVelocity(0); return 0; } 
+                if (next > 20) { setVelocity(0); return 20; } 
+                return next;
+            });
+            setTime(t => t + dt);
+            
+            reqRef.current = requestAnimationFrame(update);
         };
-        reqRef.current = requestAnimationFrame(animate);
+        reqRef.current = requestAnimationFrame(update);
         return () => cancelAnimationFrame(reqRef.current);
-    }, [isRunning, forces.acceleration]);
+    }, [isRunning, velocity, appliedForce, F_gx, MaxFriction, mass]);
+
+    const handleReset = () => {
+        setIsRunning(false);
+        setPos(0);
+        setVelocity(0);
+        setTime(0);
+        setAppliedForce(0);
+    };
+
+    const handleAnalyze = async () => {
+        setIsAnalyzing(true);
+        const summary = `Inclined Plane: Angle=${angle}, Mass=${mass}, Friction=${frictionMu}, AppliedForce=${appliedForce}, Acc=${(appliedForce - F_gx) / mass} approx`;
+        const result = await analyzeExperimentData("Inclined Plane", { angle, mass, frictionMu }, summary, lang);
+        setAiAnalysis(result);
+        setIsAnalyzing(false);
+    };
 
     return (
-        <div className="h-full flex flex-col bg-slate-900 rounded-xl border border-slate-700 p-4">
-            <div className="flex gap-4 p-4 bg-slate-800 rounded-lg mb-4 items-center">
-                <div>
-                    <label className="text-xs text-slate-400">Angle</label>
-                    <input type="range" min="0" max="60" value={angle} onChange={e => setAngle(Number(e.target.value))} className="w-full"/>
+        <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 bg-slate-900 text-slate-100">
+            <div className="lg:col-span-3 bg-slate-800 border border-slate-700 rounded-2xl p-4 flex flex-col gap-4">
+                 <div className="flex items-center gap-2 font-bold text-slate-300 border-b border-slate-700 pb-2">
+                    <Triangle size={20} className="text-emerald-500" /> Động Lực Học Dốc Nghiêng
                 </div>
-                <button onClick={() => setIsRunning(!isRunning)} className="px-4 py-2 bg-blue-600 rounded text-white text-sm">{isRunning ? 'Pause' : 'Start'}</button>
-                <button onClick={() => { setIsRunning(false); setBlockPos(0); }} className="px-4 py-2 bg-slate-600 rounded text-white text-sm">Reset</button>
-            </div>
-            <div className="flex-1 relative flex items-center justify-center overflow-hidden">
-                <div className="relative w-96 h-64 border-b-4 border-slate-500">
-                    <div 
-                        className="absolute bottom-0 left-0 h-2 bg-slate-500 origin-bottom-left w-[120%]"
-                        style={{ transform: `rotate(-${angle}deg)` }}
-                    ></div>
-                    <div 
-                        className="absolute bottom-0 left-0 w-16 h-16 bg-blue-500 rounded border border-blue-400 flex items-center justify-center text-xs font-bold text-white shadow-lg transition-transform z-10"
-                        style={{ 
-                        transform: `rotate(-${angle}deg) translateX(${blockPos * 3}px) translateY(-100%)`, 
-                        transformOrigin: 'bottom left'
-                        }}
-                    >
-                        {mass}kg
+                
+                <div className="space-y-4">
+                    <div className="p-3 bg-slate-900 rounded-xl space-y-2">
+                        <label className="text-xs text-slate-400">Góc Nghiêng ({angle}°)</label>
+                        <input type="range" min="0" max="60" value={angle} onChange={e => setAngle(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-emerald-500"/>
+                        
+                        <label className="text-xs text-slate-400">Khối lượng ({mass} kg)</label>
+                        <input type="range" min="1" max="20" value={mass} onChange={e => setMass(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-blue-500"/>
+                        
+                        <label className="text-xs text-slate-400">Hệ số Ma sát ({frictionMu})</label>
+                        <input type="range" min="0" max="1" step="0.1" value={frictionMu} onChange={e => setFrictionMu(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-orange-500"/>
+                    </div>
+                    
+                    <div className="p-3 bg-slate-900 rounded-xl space-y-2 border-l-4 border-indigo-500">
+                        <label className="text-xs font-bold text-indigo-400">Lực Tác Động Ngoài (Push/Pull)</label>
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => setAppliedForce(f => f - 10)} className="p-2 bg-slate-700 rounded hover:bg-slate-600"><Minus size={14}/></button>
+                            <span className="flex-1 text-center font-mono text-sm">{appliedForce.toFixed(0)} N</span>
+                            <button onClick={() => setAppliedForce(f => f + 10)} className="p-2 bg-slate-700 rounded hover:bg-slate-600"><Plus size={14}/></button>
+                        </div>
+                        <p className="text-[10px] text-slate-500 text-center">Dương = Đẩy lên, Âm = Thả/Kéo xuống</p>
+                    </div>
+
+                     <div className="bg-slate-700 rounded-xl p-3 text-xs font-mono space-y-1">
+                        <div className="flex justify-between"><span>Time:</span> <span className="text-white">{time.toFixed(2)}s</span></div>
+                        <div className="flex justify-between"><span>Pos:</span> <span className="text-green-400">{pos.toFixed(2)}m</span></div>
+                        <div className="flex justify-between"><span>Vel:</span> <span className="text-blue-400">{velocity.toFixed(2)}m/s</span></div>
+                        <div className="flex justify-between"><span>Acc:</span> <span className="text-red-400">{((appliedForce - F_gx - (Math.sign(velocity)*MaxFriction))/mass).toFixed(2)}m/s²</span></div>
+                     </div>
+                </div>
+
+                <div className="flex flex-col gap-2 mt-auto">
+                    {aiAnalysis ? (
+                         <div className="bg-purple-900/30 p-2 rounded text-xs relative">
+                           <button onClick={() => setAiAnalysis('')} className="absolute top-1 right-1"><X size={12}/></button>
+                           <div className="max-h-32 overflow-y-auto custom-scrollbar">
+                             {aiAnalysis}
+                           </div>
+                        </div>
+                    ) : (
+                         <button onClick={handleAnalyze} disabled={isAnalyzing} className="py-2 bg-indigo-600 rounded text-xs font-bold flex justify-center items-center gap-2">
+                             {isAnalyzing ? <Loader2 className="animate-spin" size={12}/> : <Sparkles size={12}/>} AI Phân Tích
+                         </button>
+                    )}
+                    <div className="flex gap-2">
+                        <button onClick={() => setIsRunning(!isRunning)} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2">
+                            {isRunning ? <Pause size={16}/> : <Play size={16}/>} {isRunning ? 'Dừng' : 'Chạy'}
+                        </button>
+                        <button onClick={handleReset} className="p-2 bg-slate-700 rounded-xl hover:bg-slate-600 text-white"><RotateCcw size={16}/></button>
                     </div>
                 </div>
+            </div>
+
+            <div className="lg:col-span-9 bg-black rounded-xl border border-slate-700 overflow-hidden relative shadow-2xl flex items-center justify-center">
+                <svg viewBox="0 0 800 500" className="w-full h-full">
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                          <path d="M0,0 L0,6 L9,3 z" fill="currentColor" />
+                        </marker>
+                    </defs>
+                    
+                    <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
+                        <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#1e293b" strokeWidth="1"/>
+                    </pattern>
+                    <rect width="800" height="500" fill="url(#grid)" />
+
+                    <g transform="translate(100, 400)">
+                        <path d={`M 0 0 L 600 0 L 600 -${600 * Math.tan(rad)} Z`} fill="#334155" stroke="#94a3b8" strokeWidth="2" />
+                        
+                        <path d={`M 50 0 A 50 50 0 0 0 ${50*Math.cos(-rad)} ${50*Math.sin(-rad)}`} fill="none" stroke="yellow" strokeDasharray="4 4"/>
+                        <text x="60" y="-10" fill="yellow" fontSize="14">{angle}°</text>
+
+                        <g transform={`rotate(${-angle})`}>
+                            <g transform={`translate(${pos * 25}, -25)`}>
+                                <rect x="0" y="-25" width="50" height="50" fill="#3b82f6" stroke="white" strokeWidth="2" />
+                                <text x="25" y="5" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">{mass}kg</text>
+                                
+                                <line x1="25" y1="-25" x2="25" y2={-25 - Normal/2} stroke="#10b981" strokeWidth="3" markerEnd="url(#arrow)" />
+                                <text x="35" y={-35 - Normal/2} fill="#10b981" fontSize="12">N</text>
+
+                                {appliedForce !== 0 && (
+                                    <>
+                                    <line x1={appliedForce > 0 ? 50 : 0} y1="0" x2={appliedForce > 0 ? 50 + appliedForce : 0 + appliedForce} y2="0" stroke="#818cf8" strokeWidth="3" markerEnd="url(#arrow)" />
+                                    <text x={appliedForce > 0 ? 60 + appliedForce : -20 + appliedForce} y="-10" fill="#818cf8" fontSize="12">F_app</text>
+                                    </>
+                                )}
+
+                                <g transform={`translate(25, 0) rotate(${angle})`}>
+                                     <line x1="0" y1="0" x2="0" y2={F_g * 2} stroke="#ef4444" strokeWidth="3" markerEnd="url(#arrow)" />
+                                     <text x="5" y={F_g * 2 + 10} fill="#ef4444" fontSize="12">mg</text>
+                                </g>
+                                
+                                {Math.abs(velocity) > 0.01 && (
+                                    <>
+                                        <line x1="25" y1="2" x2={25 - Math.sign(velocity)*MaxFriction*2} y2="2" stroke="#f97316" strokeWidth="3" markerEnd="url(#arrow)" />
+                                        <text x={25 - Math.sign(velocity)*MaxFriction*2} y="15" fill="#f97316" fontSize="12">f_k</text>
+                                    </>
+                                )}
+                            </g>
+                        </g>
+                    </g>
+                </svg>
             </div>
         </div>
     );
 };
-
-// --- MAIN EXPORT COMPONENT ---
 
 export const MechanicsLab: React.FC<MechanicsLabProps> = ({ mode, lang }) => {
   if (mode === AppMode.SIM_RUN_ORBITS) {

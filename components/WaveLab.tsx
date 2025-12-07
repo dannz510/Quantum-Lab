@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Settings, Play, Pause, RotateCcw, Volume2, Wind, Eye, Target, Waves, Ruler, LayoutGrid, Loader2, Sparkles, X } from 'lucide-react';
+import { Settings, Play, Pause, RotateCcw, Volume2, Wind, Eye, Target, Waves, Ruler, LayoutGrid, Loader2, Sparkles, X, Car, Plane, Star } from 'lucide-react';
 import { AppMode, Language } from '../types';
 import { analyzeExperimentData } from '../services/gemini';
 
@@ -9,26 +9,29 @@ interface WaveLabProps {
   lang: Language;
 }
 
-// --- SUB-COMPONENTS FROM USER CODE ---
-
 const WavesDopplerEffect = ({ lang }: { lang: Language }) => {
     const [isRunning, setIsRunning] = useState(false);
-    const [sourceVelocity, setSourceVelocity] = useState(0); // Vận tốc Nguồn (m/s)
-    const [waveSpeed, setWaveSpeed] = useState(343); // Tốc độ Sóng (Sound/Light - m/s)
-    const [sourceFrequency, setSourceFrequency] = useState(10); // Tần số Nguồn (Hz)
+    const [sourceVelocity, setSourceVelocity] = useState(0); 
+    const [waveSpeed, setWaveSpeed] = useState(343); 
+    const [sourceFrequency, setSourceFrequency] = useState(10); 
+    const [sourceType, setSourceType] = useState<'car'|'jet'|'star'>('car');
+    
     const [time, setTime] = useState(0);
     const [aiAnalysis, setAiAnalysis] = useState<string>('');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const graphRef = useRef<HTMLCanvasElement>(null);
     const reqRef = useRef(0);
-    const observers = [{x: 100, y: 250, freq: 0, color: '#f59e0b'}, {x: 700, y: 250, freq: 0, color: '#3b82f6'}];
+    
+    // Observers
+    const observers = [{x: 100, y: 250, freq: 0, color: '#f59e0b', label: 'Observer A'}, {x: 700, y: 250, freq: 0, color: '#3b82f6', label: 'Observer B'}];
 
-    // Draw Function
     const drawSimulation = useCallback(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
+        if (!ctx) return;
         const W = canvas.width;
         const H = canvas.height;
         const centerY = H / 2;
@@ -39,108 +42,78 @@ const WavesDopplerEffect = ({ lang }: { lang: Language }) => {
 
         const V_source = sourceVelocity;
         const V_wave = waveSpeed;
-        
-        // Convert simulation units (pixel/time) to real-world scale (simplified)
-        const scale = 5; // 1 pixel = 5m
+        const scale = 5; 
         const V_source_sim = V_source / scale;
         const V_wave_sim = V_wave / scale; 
-        const wavePeriod = 1 / sourceFrequency; // Second
+        const wavePeriod = 1 / sourceFrequency; 
         
-        // Calculate source position
         const sourceX = centerX + V_source_sim * time;
         const sourceY = centerY;
 
-        // 1. Draw Wavefronts
-        const maxWaveAge = 15; // Max waves to draw
-        
+        // Wavefronts
+        const maxWaveAge = 15; 
         for (let i = 0; i < maxWaveAge; i++) {
             const waveAge = time - i * wavePeriod;
             if (waveAge <= 0) continue;
-
             const radius = waveAge * V_wave_sim;
-            const centerShift = V_source_sim * waveAge; // Shift from initial center
-
             ctx.strokeStyle = '#34d399';
             ctx.lineWidth = 1;
             ctx.beginPath();
-            // Center of the wave is the point where the source emitted it
             ctx.arc(centerX + V_source_sim * (time - waveAge), sourceY, radius, 0, Math.PI * 2);
             ctx.stroke();
         }
 
-        // 2. Draw Source (Nguồn)
-        const sourceColor = V_source_sim > 0 ? '#ef4444' : '#f59e0b'; // Red shift (moving right)
-        ctx.fillStyle = sourceColor;
+        // Source Icon
+        ctx.fillStyle = 'white';
+        // Simple shape based on type
         ctx.beginPath();
-        ctx.arc(sourceX, sourceY, 10, 0, Math.PI * 2);
+        if (sourceType === 'car') {
+            ctx.rect(sourceX - 15, sourceY - 10, 30, 20);
+        } else if (sourceType === 'jet') {
+            ctx.moveTo(sourceX + 20, sourceY); ctx.lineTo(sourceX - 10, sourceY - 15); ctx.lineTo(sourceX - 10, sourceY + 15);
+        } else {
+            ctx.arc(sourceX, sourceY, 15, 0, Math.PI*2);
+        }
         ctx.fill();
         
-        // Draw Velocity Vector
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(sourceX, sourceY);
-        ctx.lineTo(sourceX + V_source_sim * 20, sourceY);
-        ctx.stroke();
-        
-        // 3. Draw Observers & Calculate Observed Frequency (Mock update for UI)
+        // Observers
         observers.forEach(obs => {
             const dx = obs.x - sourceX;
-            const dist = Math.sqrt(dx * dx);
-            
-            // Simplified Doppler calculation (1D motion)
-            const f_obs = sourceFrequency * (V_wave / (V_wave - V_source * Math.sign(dx)));
-            obs.freq = f_obs;
+            // Doppler Math
+            const f_obs = sourceFrequency * (V_wave / (V_wave - V_source * Math.sign(-dx))); // Approaching source makes denominator smaller (higher freq)
+            obs.freq = Math.abs(f_obs);
 
             ctx.fillStyle = obs.color;
-            ctx.beginPath();
-            ctx.arc(obs.x, obs.y, 5, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Text annotation
-            ctx.fillStyle = 'white';
-            ctx.font = '12px Inter';
-            ctx.fillText(`f = ${f_obs.toFixed(1)} Hz`, obs.x, obs.y - 15);
+            ctx.beginPath(); ctx.arc(obs.x, obs.y, 8, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'white'; ctx.font = '12px sans-serif'; ctx.fillText(`${obs.freq.toFixed(1)} Hz`, obs.x - 20, obs.y - 15);
         });
-        
-        // 4. Draw Mach Cone (if V_source >= V_wave)
-        if (V_source >= V_wave) {
-             const machAngle = Math.asin(V_wave / V_source); 
-             const coneLength = 500;
-             
-             ctx.strokeStyle = '#f87171'; // Red for Shockwave
-             ctx.lineWidth = 3;
-             
-             // Top Cone
-             ctx.beginPath();
-             ctx.moveTo(sourceX, sourceY);
-             ctx.lineTo(sourceX + coneLength * Math.cos(machAngle) * 0.5, sourceY - coneLength * Math.sin(machAngle));
-             ctx.stroke();
 
-             // Bottom Cone
-             ctx.beginPath();
-             ctx.moveTo(sourceX, sourceY);
-             ctx.lineTo(sourceX + coneLength * Math.cos(machAngle) * 0.5, sourceY + coneLength * Math.sin(machAngle));
-             ctx.stroke();
-             
-             ctx.fillStyle = '#f87171';
-             ctx.font = 'bold 16px Inter';
-             ctx.textAlign = 'center';
-             ctx.fillText('SÓNG XUNG KÍCH (MACH CONE)', centerX, H - 20);
+        // Graph Drawing (Observer B Freq over time)
+        const gCanvas = graphRef.current;
+        if(gCanvas) {
+            const gCtx = gCanvas.getContext('2d');
+            if(gCtx) {
+                // Scroll
+                const img = gCtx.getImageData(1, 0, gCanvas.width-1, gCanvas.height);
+                gCtx.putImageData(img, 0, 0);
+                gCtx.fillStyle = '#1e293b'; gCtx.fillRect(gCanvas.width-1, 0, 1, gCanvas.height);
+                
+                // Plot B
+                const y = gCanvas.height - (observers[1].freq / (sourceFrequency*2)) * gCanvas.height * 0.8;
+                gCtx.fillStyle = '#3b82f6';
+                gCtx.fillRect(gCanvas.width-1, y, 2, 2);
+            }
         }
 
-    }, [sourceVelocity, waveSpeed, sourceFrequency, time, observers]);
+    }, [sourceVelocity, waveSpeed, sourceFrequency, time, sourceType]);
 
-    // Animation Loop
     useEffect(() => {
         if (!isRunning) return;
-
         const animate = () => {
             setTime(t => t + 0.05);
             drawSimulation();
             reqRef.current = requestAnimationFrame(animate);
         };
-
         reqRef.current = requestAnimationFrame(animate);
         return () => cancelAnimationFrame(reqRef.current);
     }, [isRunning, drawSimulation]);
@@ -153,6 +126,10 @@ const WavesDopplerEffect = ({ lang }: { lang: Language }) => {
         setIsRunning(false);
         setTime(0);
         setSourceVelocity(0);
+        if(graphRef.current) {
+             const ctx = graphRef.current.getContext('2d');
+             if(ctx) ctx.clearRect(0,0,graphRef.current.width, graphRef.current.height);
+        }
         drawSimulation();
         setAiAnalysis('');
     };
@@ -167,84 +144,58 @@ const WavesDopplerEffect = ({ lang }: { lang: Language }) => {
 
     return (
         <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 bg-slate-900 text-slate-100 overflow-hidden">
-            
-            {/* CỘT THAM SỐ (LEFT PANEL) */}
             <div className="lg:col-span-3 bg-slate-800 border border-slate-700 rounded-2xl p-4 flex flex-col gap-4 overflow-y-auto custom-scrollbar">
                 <div className="flex items-center gap-2 text-slate-300 font-bold border-b border-slate-700 pb-2 flex-shrink-0">
                     <Volume2 size={20} className="text-pink-500" /> Cấu Hình Sóng & Nguồn
                 </div>
                 
-                {/* Control: Source Velocity */}
-                <div className="p-3 bg-slate-900 rounded-xl shadow-inner">
-                   <label className="text-xs text-slate-400 block mb-1">Vận tốc Nguồn (vs) ({sourceVelocity.toFixed(0)} m/s)</label>
-                   <input type="range" min="0" max="500" step="10" value={sourceVelocity} onChange={(e) => setSourceVelocity(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-red-500 cursor-pointer" />
-                   {/* Đã sửa lỗi: Thay thế > bằng {'>'} */}
-                   <p className='text-xs text-red-400 italic'>Vận tốc {'>'} Tốc độ sóng $\rightarrow$ Sóng Xung kích (Mach Cone).</p>
+                <div className="p-3 bg-slate-900 rounded-xl space-y-3">
+                   <label className="text-xs text-slate-400 block">Vận tốc Nguồn ({sourceVelocity} m/s)</label>
+                   <input type="range" min="0" max="500" step="10" value={sourceVelocity} onChange={(e) => setSourceVelocity(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-red-500" />
+                   
+                   <label className="text-xs text-slate-400 block">Tốc độ Sóng ({waveSpeed} m/s)</label>
+                   <input type="range" min="100" max="500" step="10" value={waveSpeed} onChange={(e) => setWaveSpeed(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-cyan-500" />
+                   
+                   <label className="text-xs text-slate-400 block">Tần số Nguồn ({sourceFrequency} Hz)</label>
+                   <input type="range" min="1" max="50" step="1" value={sourceFrequency} onChange={(e) => setSourceFrequency(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-yellow-500" />
                 </div>
                 
-                {/* Control: Wave Speed (Môi trường) */}
-                <div className="p-3 bg-slate-900 rounded-xl shadow-inner">
-                   <label className="text-xs text-slate-400 block mb-1"><Wind size={14} className='inline mr-1'/> Tốc độ Sóng (v) ({waveSpeed.toFixed(0)} m/s)</label>
-                   <input type="range" min="100" max="500" step="10" value={waveSpeed} onChange={(e) => setWaveSpeed(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-cyan-500 cursor-pointer" />
-                   <p className='text-xs text-cyan-400 italic'>Âm thanh trong không khí: ~343 m/s.</p>
+                <div className="flex gap-2 p-2 bg-slate-900 rounded-xl">
+                    <button onClick={() => setSourceType('car')} className={`p-2 flex-1 rounded ${sourceType === 'car' ? 'bg-indigo-600' : 'bg-slate-700'}`}><Car size={16} className="mx-auto"/></button>
+                    <button onClick={() => setSourceType('jet')} className={`p-2 flex-1 rounded ${sourceType === 'jet' ? 'bg-indigo-600' : 'bg-slate-700'}`}><Plane size={16} className="mx-auto"/></button>
+                    <button onClick={() => setSourceType('star')} className={`p-2 flex-1 rounded ${sourceType === 'star' ? 'bg-indigo-600' : 'bg-slate-700'}`}><Star size={16} className="mx-auto"/></button>
                 </div>
 
-                {/* Control: Source Frequency */}
-                <div className="p-3 bg-slate-900 rounded-xl shadow-inner">
-                   <label className="text-xs text-slate-400 block mb-1">Tần số Nguồn (fs) ({sourceFrequency.toFixed(0)} Hz)</label>
-                   <input type="range" min="1" max="50" step="1" value={sourceFrequency} onChange={(e) => setSourceFrequency(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-yellow-500 cursor-pointer" />
-                </div>
-                
-                {/* Phân tích Tần số (Frequency Analysis Panel) */}
-                <div className="p-3 bg-slate-700 rounded-xl shadow-lg border-l-4 border-white mt-auto">
-                    <p className="text-sm font-bold text-white mb-1"><Eye size={14} className='inline mr-1'/> Tần Số Quan Sát (f_obs)</p>
-                    <div className='text-xs space-y-1 font-mono'>
-                        <p className='text-yellow-400'>Quan sát viên 1 (Trước): fs * v / (v - vs) = {observers[0].freq.toFixed(2)} Hz (Blue Shift)</p>
-                        <p className='text-blue-400'>Quan sát viên 2 (Sau): fs * v / (v + vs) = {observers[1].freq.toFixed(2)} Hz (Red Shift)</p>
-                    </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-700 mt-auto flex flex-col gap-4">
+                <div className="flex flex-col gap-2 mt-auto">
                     {aiAnalysis ? (
-                        <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-3 text-sm text-slate-200 relative animate-in slide-in-from-bottom-2 flex flex-col">
-                        <div className="flex justify-between items-start mb-2 sticky top-0">
-                            <div className="flex items-center gap-2 text-purple-400 text-xs font-bold"><Sparkles size={12}/> AI Analysis</div>
-                            <button onClick={() => setAiAnalysis('')} className="text-slate-500 hover:text-white p-1 rounded hover:bg-white/10 transition-colors"><X size={14}/></button>
-                        </div>
-                        <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                            <p className="whitespace-pre-wrap text-xs leading-relaxed">{aiAnalysis}</p>
-                        </div>
+                        <div className="bg-purple-900/30 p-2 rounded text-xs relative">
+                           <button onClick={() => setAiAnalysis('')} className="absolute top-1 right-1"><X size={12}/></button>
+                           {/* SCROLLBAR ADDED */}
+                           <div className="max-h-32 overflow-y-auto custom-scrollbar">
+                             {aiAnalysis}
+                           </div>
                         </div>
                     ) : (
-                        <button 
-                        onClick={handleAnalyze}
-                        disabled={isAnalyzing}
-                        className="w-full py-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 rounded-xl text-slate-300 font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                        {isAnalyzing ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
-                        Phân Tích AI
-                        </button>
+                         <button onClick={handleAnalyze} disabled={isAnalyzing} className="py-2 bg-indigo-600 rounded text-xs font-bold flex justify-center items-center gap-2">
+                             {isAnalyzing ? <Loader2 className="animate-spin" size={12}/> : <Sparkles size={12}/>} AI Phân Tích
+                         </button>
                     )}
-
-                    {/* Điều khiển Mô phỏng */}
-                    <div className="flex gap-2 flex-shrink-0">
-                        <button onClick={() => setIsRunning(!isRunning)} className="flex-1 bg-pink-600 hover:bg-pink-500 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
-                            {isRunning ? <Pause size={16}/> : <Play size={16}/>} {isRunning ? 'Tạm Dừng' : 'Phát Sóng'}
+                    <div className="flex gap-2">
+                        <button onClick={() => setIsRunning(!isRunning)} className="flex-1 bg-pink-600 hover:bg-pink-500 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2">
+                            {isRunning ? <Pause size={16}/> : <Play size={16}/>} {isRunning ? 'Dừng' : 'Phát'}
                         </button>
-                        <button onClick={handleReset} className="p-2 bg-slate-700 rounded-xl hover:bg-slate-600 text-white transition-colors" title="Thiết Lập Lại"><RotateCcw size={16}/></button>
+                        <button onClick={handleReset} className="p-2 bg-slate-700 rounded-xl hover:bg-slate-600 text-white"><RotateCcw size={16}/></button>
                     </div>
                 </div>
             </div>
 
-            {/* CỘT MÔ PHỎNG (RIGHT PANEL) */}
             <div className="lg:col-span-9 flex flex-col gap-4">
-                
-                {/* Simulation Canvas */}
                 <div className="flex-1 bg-black rounded-xl border border-slate-700 overflow-hidden relative shadow-2xl">
                     <canvas ref={canvasRef} width={800} height={500} className="w-full h-full object-contain" />
-                    <div className="absolute top-4 left-4 text-sm text-slate-400">
-                        Mô phỏng Trắc đồ Sóng (Wavefront Mapping)
-                    </div>
+                </div>
+                <div className="h-32 bg-slate-800 rounded-xl border border-slate-700 p-2 relative">
+                    <div className="text-xs text-slate-400 absolute top-2 left-2">Biểu Đồ Tần Số Quan Sát (Observer B)</div>
+                    <canvas ref={graphRef} width={800} height={100} className="w-full h-full"></canvas>
                 </div>
             </div>
         </div>
@@ -253,11 +204,11 @@ const WavesDopplerEffect = ({ lang }: { lang: Language }) => {
 
 const WavesRippleTank = ({ lang }: { lang: Language }) => {
     const [isRunning, setIsRunning] = useState(false);
-    const [sourceCount, setSourceCount] = useState(2); // Số lượng nguồn sóng
-    const [frequency, setFrequency] = useState(5); // Tần số (Hz)
-    const [phaseDifference, setPhaseDifference] = useState(0); // Độ lệch pha giữa các nguồn
-    const [barrierType, setBarrierType] = useState('double_slit'); // Loại vật cản
-    const [slitWidth, setSlitWidth] = useState(10); // Chiều rộng khe
+    const [sourceCount, setSourceCount] = useState(2);
+    const [frequency, setFrequency] = useState(5);
+    const [phaseDifference, setPhaseDifference] = useState(0); 
+    const [barrierType, setBarrierType] = useState('double_slit');
+    const [slitWidth, setSlitWidth] = useState(10); 
     const [aiAnalysis, setAiAnalysis] = useState<string>('');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
@@ -266,14 +217,12 @@ const WavesRippleTank = ({ lang }: { lang: Language }) => {
     const reqRef = useRef(0);
     const timeRef = useRef(0);
 
-    // Mock Source Positions (Simplified)
     const sources = [
         { x: 350, y: 250, phase: 0 },
         { x: 450, y: 250, phase: phaseDifference },
         { x: 400, y: 150, phase: phaseDifference * 2 }
     ].slice(0, sourceCount);
     
-    // Draw Function (Interference and Diffraction)
     const drawSimulation = useCallback(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -285,10 +234,9 @@ const WavesRippleTank = ({ lang }: { lang: Language }) => {
         ctx.fillStyle = '#0f172a';
         ctx.fillRect(0, 0, W, H);
 
-        const V_wave = 100; // Tốc độ sóng (pixel/s)
+        const V_wave = 100;
         const wavelength = V_wave / frequency;
 
-        // 1. Calculate and Draw Wave Amplitude (Amplitude Map)
         for (let x = 0; x < W; x += 2) {
             for (let y = 0; y < H; y += 2) {
                 let totalAmplitude = 0;
@@ -297,17 +245,14 @@ const WavesRippleTank = ({ lang }: { lang: Language }) => {
                     const dy = y - source.y;
                     const distance = Math.sqrt(dx * dx + dy * dy);
                     
-                    // Phase based on distance, time, and source phase
                     const phase = (distance / wavelength * 2 * Math.PI) - (timeRef.current * frequency * 2 * Math.PI) + (source.phase * Math.PI / 180);
-                    const amplitude = Math.cos(phase) / (distance / 50 + 1); // Amplitude decreases with distance
+                    const amplitude = Math.cos(phase) / (distance / 50 + 1); 
                     totalAmplitude += amplitude;
                 });
                 
-                // Map Amplitude to Color (Interference Pattern)
                 const colorVal = Math.floor(Math.abs(totalAmplitude) * 128) + 127;
                 const alpha = Math.min(1.0, Math.abs(totalAmplitude) * 0.8);
 
-                // Dùng màu vàng/xanh lam để trực quan hóa (Ánh sáng chói và vùng tối)
                 const r = totalAmplitude > 0 ? colorVal : 127;
                 const g = 127;
                 const b = totalAmplitude < 0 ? colorVal : 127;
@@ -317,7 +262,6 @@ const WavesRippleTank = ({ lang }: { lang: Language }) => {
             }
         }
         
-        // 2. Draw Barrier (Vật cản Nhiễu xạ)
         const barrierX = W / 2;
         ctx.fillStyle = '#475569';
         ctx.fillRect(barrierX - 5, 0, 10, H);
@@ -326,13 +270,11 @@ const WavesRippleTank = ({ lang }: { lang: Language }) => {
             const slitCenter1 = H / 2 - 50;
             const slitCenter2 = H / 2 + 50;
             
-            // Draw slits (Gaps in the barrier)
             ctx.fillStyle = '#0f172a';
-            ctx.fillRect(barrierX - 5, slitCenter1 - slitWidth * 2, 10, slitWidth * 4); // Slit 1
-            ctx.fillRect(barrierX - 5, slitCenter2 - slitWidth * 2, 10, slitWidth * 4); // Slit 2
+            ctx.fillRect(barrierX - 5, slitCenter1 - slitWidth * 2, 10, slitWidth * 4); 
+            ctx.fillRect(barrierX - 5, slitCenter2 - slitWidth * 2, 10, slitWidth * 4); 
         }
 
-        // 3. Draw Sources
         sources.forEach(source => {
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
@@ -342,7 +284,6 @@ const WavesRippleTank = ({ lang }: { lang: Language }) => {
 
     }, [sourceCount, frequency, phaseDifference, barrierType, slitWidth, sources]);
 
-    // Draw Cross-Section View
     const drawCrossSection = useCallback(() => {
         const canvas = crossSectionRef.current;
         if (!canvas) return;
@@ -364,7 +305,6 @@ const WavesRippleTank = ({ lang }: { lang: Language }) => {
         const V_wave = 100;
         const wavelength = V_wave / frequency;
         
-        // Simulate wave amplitude along the center Y axis (X=W*0.75)
         ctx.strokeStyle = '#34d399';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -375,9 +315,8 @@ const WavesRippleTank = ({ lang }: { lang: Language }) => {
         const simH = simulationCanvas.height;
         const crossSectionX = simW * 0.75;
         
-        // Sample the amplitude map along X=crossSectionX
         for (let y = 0; y < H; y++) {
-            const simY = y * simH / H; // Map cross-section Y to simulation Y
+            const simY = y * simH / H; 
             let totalAmplitude = 0;
             sources.forEach(source => {
                 const dx = crossSectionX - source.x;
@@ -391,14 +330,12 @@ const WavesRippleTank = ({ lang }: { lang: Language }) => {
             
             const y_pos = centerY - totalAmplitude * 50;
             if (y === 0) ctx.moveTo(W * 0.5, y_pos);
-            else ctx.lineTo(W * 0.5, y_pos); // Draw along the center of the cross-section plot
+            else ctx.lineTo(W * 0.5, y_pos); 
         }
         ctx.stroke();
 
     }, [sources, frequency]);
 
-
-    // Animation Loop
     useEffect(() => {
         if (!isRunning) return;
 
@@ -436,33 +373,27 @@ const WavesRippleTank = ({ lang }: { lang: Language }) => {
 
     return (
         <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 bg-slate-900 text-slate-100 overflow-hidden">
-            
-            {/* CỘT THAM SỐ (LEFT PANEL) */}
             <div className="lg:col-span-3 bg-slate-800 border border-slate-700 rounded-2xl p-4 flex flex-col gap-4 overflow-y-auto custom-scrollbar">
                 <div className="flex items-center gap-2 text-slate-300 font-bold border-b border-slate-700 pb-2 flex-shrink-0">
                     <Waves size={20} className="text-teal-500" /> Cấu Hình Bể Sóng
                 </div>
                 
-                {/* Control: Source Count */}
                 <div className="p-3 bg-slate-900 rounded-xl shadow-inner">
                    <label className="text-xs text-slate-400 block mb-1">Số lượng Nguồn Sóng ({sourceCount})</label>
                    <input type="range" min="1" max="3" step="1" value={sourceCount} onChange={(e) => setSourceCount(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-teal-500 cursor-pointer" />
                 </div>
                 
-                {/* Control: Frequency */}
                 <div className="p-3 bg-slate-900 rounded-xl shadow-inner">
                    <label className="text-xs text-slate-400 block mb-1">Tần số (f) ({frequency.toFixed(1)} Hz)</label>
                    <input type="range" min="1" max="10" step="0.5" value={frequency} onChange={(e) => setFrequency(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-teal-500 cursor-pointer" />
                    <p className='text-xs text-teal-400 italic'>Bước sóng (lambda): {(100 / frequency).toFixed(1)} px</p>
                 </div>
                 
-                {/* Control: Phase Difference */}
                 <div className="p-3 bg-slate-900 rounded-xl shadow-inner">
                    <label className="text-xs text-slate-400 block mb-1">Lệch Pha Nguồn 2 ({phaseDifference}°) </label>
                    <input type="range" min="0" max="360" step="10" value={phaseDifference} onChange={(e) => setPhaseDifference(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-indigo-500 cursor-pointer" />
                 </div>
 
-                {/* Điều khiển Hình dạng Vật cản (Barrier Shape Control) */}
                 <div className="p-3 bg-slate-900 rounded-xl shadow-inner space-y-3">
                     <label className="text-xs text-slate-400 block mb-2">Hình dạng Vật cản Nhiễu xạ</label>
                     <select 
@@ -482,7 +413,6 @@ const WavesRippleTank = ({ lang }: { lang: Language }) => {
                     )}
                 </div>
 
-                {/* Phân tích Sóng (Wave Analysis Grid) */}
                 <div className="p-3 bg-slate-700 rounded-xl shadow-lg border-l-4 border-yellow-400 mt-auto">
                     <p className="text-sm font-bold text-white mb-1"><Ruler size={14} className='inline mr-1'/> Phân Tích Mô Hình Giao Thoa</p>
                     <p className='text-xs text-slate-300'>n: Số Vùng Cực Đại, lambda / d: Tỷ lệ Giao thoa/Nhiễu xạ</p>
@@ -496,7 +426,8 @@ const WavesRippleTank = ({ lang }: { lang: Language }) => {
                             <div className="flex items-center gap-2 text-purple-400 text-xs font-bold"><Sparkles size={12}/> AI Analysis</div>
                             <button onClick={() => setAiAnalysis('')} className="text-slate-500 hover:text-white p-1 rounded hover:bg-white/10 transition-colors"><X size={14}/></button>
                         </div>
-                        <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                        {/* SCROLLBAR ADDED */}
+                        <div className="max-h-60 overflow-y-auto custom-scrollbar pr-2">
                             <p className="whitespace-pre-wrap text-xs leading-relaxed">{aiAnalysis}</p>
                         </div>
                         </div>
@@ -511,7 +442,6 @@ const WavesRippleTank = ({ lang }: { lang: Language }) => {
                         </button>
                     )}
 
-                    {/* Điều khiển Mô phỏng */}
                     <div className="flex gap-2 flex-shrink-0">
                         <button onClick={() => setIsRunning(!isRunning)} className="flex-1 bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
                             {isRunning ? <Pause size={16}/> : <Play size={16}/>} {isRunning ? 'Tạm Dừng' : 'Tạo Sóng'}
@@ -521,10 +451,7 @@ const WavesRippleTank = ({ lang }: { lang: Language }) => {
                 </div>
             </div>
 
-            {/* CỘT MÔ PHỎNG (RIGHT PANEL) */}
             <div className="lg:col-span-9 flex flex-col gap-4">
-                
-                {/* Simulation Canvas (Interference Pattern) */}
                 <div className="flex-1 bg-black rounded-xl border border-slate-700 overflow-hidden relative shadow-2xl">
                     <canvas ref={canvasRef} width={800} height={500} className="w-full h-full object-contain" />
                     <div className="absolute top-4 left-4 text-sm text-slate-400">
@@ -532,7 +459,6 @@ const WavesRippleTank = ({ lang }: { lang: Language }) => {
                     </div>
                 </div>
                 
-                {/* Mặt cắt Sóng Động (Cross-Section View) */}
                 <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg">
                     <div className="flex items-center gap-2 text-slate-300 font-bold border-b border-slate-700 pb-2 mb-2"><LayoutGrid size={16} className="text-purple-400"/> Mặt Cắt Sóng Động (Tại X=75%)</div>
                     <div className='h-20 w-full'>
@@ -544,8 +470,6 @@ const WavesRippleTank = ({ lang }: { lang: Language }) => {
         </div>
     );
 };
-
-// --- MAIN EXPORT COMPONENT ---
 
 export const WaveLab: React.FC<WaveLabProps> = ({ mode, lang }) => {
   if (mode === AppMode.SIM_RUN_DOPPLER) {

@@ -3,17 +3,15 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChevronDown, ChevronUp, Play, Pause, RotateCcw, Zap, Waves, Cpu, Sparkles, Loader2, X } from 'lucide-react';
 import { analyzeExperimentData } from '../services/gemini';
 
-// Cấu hình ban đầu
 const INITIAL_CONFIG = {
   amplitude: 50,
-  frequency: 1, // Hz
-  waveSpeed: 50, // pixel/s
-  waveType: 'transverse', // 'transverse' (ngang) hoặc 'longitudinal' (dọc)
+  frequency: 1, 
+  waveSpeed: 50, 
+  waveType: 'transverse', 
   isRunning: true,
-  scale: 1.0, // Tỷ lệ phóng to
+  scale: 1.0, 
 };
 
-// Component con để hiển thị thông số tính toán
 const ParamDisplay = ({ label, value, unit, formula }: { label: string, value: string, unit: string, formula: string }) => (
   <div className="flex justify-between items-center p-2 bg-slate-800 rounded-lg shadow-sm border border-slate-700">
     <span className="text-sm font-medium text-slate-300">{label}</span>
@@ -25,10 +23,6 @@ const ParamDisplay = ({ label, value, unit, formula }: { label: string, value: s
   </div>
 );
 
-/**
- * Component chính của ứng dụng mô phỏng sóng vật lý.
- * Sử dụng Tailwind CSS cho giao diện và Canvas API cho mô phỏng.
- */
 export const SimpleWaveLab = () => {
   const [config, setConfig] = useState(INITIAL_CONFIG);
   const [time, setTime] = useState(0);
@@ -38,17 +32,14 @@ export const SimpleWaveLab = () => {
   const [aiAnalysis, setAiAnalysis] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  // Tham chiếu để giữ requestAnimationFrame ID
   const animationRef = React.useRef<number>(0);
-  // Tham chiếu để lưu trữ thời điểm khung hình trước
   const lastTimeRef = React.useRef(0);
 
-  // Tính toán các đại lượng sóng phái sinh
   const derivedParams = useMemo(() => {
-    const period = 1 / config.frequency; // Chu kỳ T (giây)
-    const wavelength = config.waveSpeed / config.frequency; // Bước sóng Lambda (pixel)
-    const waveNumber = (2 * Math.PI) / wavelength; // Số sóng k
-    const angularFrequency = 2 * Math.PI * config.frequency; // Tần số góc omega
+    const period = 1 / config.frequency; 
+    const wavelength = config.waveSpeed / config.frequency; 
+    const waveNumber = (2 * Math.PI) / wavelength; 
+    const angularFrequency = 2 * Math.PI * config.frequency; 
 
     return {
       period: period.toFixed(2),
@@ -67,45 +58,37 @@ export const SimpleWaveLab = () => {
       Speed: ${config.waveSpeed} units/s
       Wavelength: ${derivedParams.wavelength}
     `;
-    // Assuming EN for simple lab, or pass lang if available
     const result = await analyzeExperimentData("Simple Wave Physics", config, summary, 'en'); 
     setAiAnalysis(result);
     setIsAnalyzing(false);
   };
 
-  // Hàm vẽ chính
   const drawWave = useCallback((ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number, t: number) => {
     if (!ctx) return;
 
-    // Thiết lập thông số
     const { amplitude, frequency, waveSpeed, waveType, scale } = config;
 
-    // Các hằng số hình học
     const centerY = canvasHeight / 2;
-    const paddingX = 40; // Khoảng đệm cho trục X
+    const paddingX = 40; 
     const visibleWidth = canvasWidth - 2 * paddingX;
-    const wavelength = waveSpeed / frequency; // Bước sóng
-    const waveNumber = (2 * Math.PI) / wavelength; // k
-    const angularFrequency = 2 * Math.PI * frequency; // omega
+    const wavelength = waveSpeed / frequency; 
+    const angularFrequency = 2 * Math.PI * frequency; 
 
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
     
-    // Draw Background Grid
     ctx.strokeStyle = '#1e293b';
     ctx.lineWidth = 1;
     for(let i=0; i<canvasWidth; i+=40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvasHeight); ctx.stroke(); }
     for(let j=0; j<canvasHeight; j+=40) { ctx.beginPath(); ctx.moveTo(0,j); ctx.lineTo(canvasWidth,j); ctx.stroke(); }
 
-    // --- 1. Vẽ trục tọa độ (Trục X) ---
-    ctx.strokeStyle = '#475569'; // Màu xám đậm
+    ctx.strokeStyle = '#475569'; 
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(paddingX, centerY);
     ctx.lineTo(canvasWidth - paddingX, centerY);
     ctx.stroke();
 
-    // Vẽ điểm gốc (Source)
-    ctx.fillStyle = '#ef4444'; // Đỏ
+    ctx.fillStyle = '#ef4444'; 
     ctx.beginPath();
     ctx.arc(paddingX, centerY, 5, 0, 2 * Math.PI);
     ctx.fill();
@@ -113,51 +96,39 @@ export const SimpleWaveLab = () => {
     ctx.font = '12px sans-serif';
     ctx.fillText('Nguồn Sóng (O)', paddingX - 10, centerY + 25);
 
-    // --- 2. Vẽ Sóng và các Hạt Môi Trường ---
-    const pointCount = 500; // Số lượng hạt để mô phỏng
+    const pointCount = 500; 
     const particleRadius = 3;
     ctx.beginPath();
-    ctx.strokeStyle = '#3b82f6'; // Xanh lam sáng
+    ctx.strokeStyle = '#3b82f6'; 
     ctx.lineWidth = 3 * scale;
     ctx.moveTo(paddingX, centerY);
 
     const particles = [];
 
-    // Lặp qua các điểm trên trục X
     for (let i = 0; i <= pointCount; i++) {
-      const x = paddingX + (i / pointCount) * visibleWidth; // Vị trí x thực tế
-      const distance = x - paddingX; // Khoảng cách từ nguồn O (d)
-
-      // Phương trình sóng tại x, thời điểm t: u(x, t) = A * cos(wt - kx)
-      // Lưu ý: Chỉ truyền sóng sau khi t - d/v >= 0
+      const x = paddingX + (i / pointCount) * visibleWidth; 
+      const distance = x - paddingX; 
       const phase = angularFrequency * (t - distance / waveSpeed);
-      let displacement = 0; // Độ lệch
+      let displacement = 0; 
 
       if (t * waveSpeed >= distance) {
         displacement = amplitude * Math.cos(phase);
       }
 
-      // Vị trí hạt y (độ lệch so với trục X)
       let particleX = x;
       let particleY = centerY - displacement;
 
       if (waveType === 'transverse') {
-        // Sóng ngang: dao động vuông góc với phương truyền (theo trục Y)
         particleX = x;
         particleY = centerY - displacement * scale;
         ctx.lineTo(particleX, particleY);
       } else {
-        // Sóng dọc: dao động trùng với phương truyền (theo trục X)
-        // Độ lệch của hạt là theo trục X
-        particleX = x + displacement * scale * 0.5; // Giảm biên độ dao động X một chút
+        particleX = x + displacement * scale * 0.5; 
         particleY = centerY;
       }
-
-      // Thêm hạt vào danh sách để vẽ sau
       particles.push({ x: particleX, y: particleY });
     }
 
-    // Vẽ đường bao (chỉ cho sóng ngang)
     if (waveType === 'transverse') {
       ctx.shadowColor = '#3b82f6';
       ctx.shadowBlur = 10;
@@ -165,36 +136,31 @@ export const SimpleWaveLab = () => {
       ctx.shadowBlur = 0;
     }
 
-    // --- 3. Vẽ các Hạt Môi Trường (Particle) ---
     particles.forEach((p, idx) => {
-      // Draw fewer particles for clarity
       if (idx % 5 === 0) {
-        ctx.fillStyle = '#10b981'; // Xanh lá cây
+        ctx.fillStyle = '#10b981'; 
         ctx.beginPath();
         ctx.arc(p.x, p.y, particleRadius * scale, 0, 2 * Math.PI);
         ctx.fill();
       }
     });
 
-    // --- 4. Hiển thị Bước Sóng (Lambda) ---
-    if (wavelength <= visibleWidth && wavelength > 50) { // Chỉ hiển thị nếu đủ lớn
+    if (wavelength <= visibleWidth && wavelength > 50) { 
       const lambdaStart = paddingX;
       const lambdaEnd = paddingX + wavelength;
 
-      ctx.strokeStyle = '#f59e0b'; // Vàng cam
+      ctx.strokeStyle = '#f59e0b'; 
       ctx.setLineDash([5, 5]);
       ctx.lineWidth = 1;
 
-      // Đường thẳng đứng tại điểm bắt đầu và kết thúc một bước sóng
       ctx.beginPath();
       ctx.moveTo(lambdaStart, centerY + 10);
       ctx.lineTo(lambdaStart, centerY + 50);
       ctx.moveTo(lambdaEnd, centerY + 10);
       ctx.lineTo(lambdaEnd, centerY + 50);
       ctx.stroke();
-      ctx.setLineDash([]); // Tắt nét đứt
+      ctx.setLineDash([]); 
 
-      // Mũi tên và nhãn Lambda
       ctx.beginPath();
       ctx.moveTo(lambdaStart, centerY + 30);
       ctx.lineTo(lambdaEnd, centerY + 30);
@@ -205,20 +171,17 @@ export const SimpleWaveLab = () => {
       ctx.fillText('λ (Bước Sóng)', lambdaStart + (wavelength / 2) - 30, centerY + 45);
     }
 
-    // --- 5. Hiển thị Thời gian ---
     ctx.fillStyle = '#94a3b8';
     ctx.font = 'bold 16px sans-serif';
     ctx.fillText(`Thời gian: ${t.toFixed(2)} s`, canvasWidth - 150, 30);
 
-  }, [config, derivedParams.wavelength]); // Thêm derivedParams.wavelength vào dep array
+  }, [config, derivedParams.wavelength]);
 
-  // Vòng lặp Animation
   const animate = useCallback((currentTime: number) => {
     const deltaTime = (currentTime - lastTimeRef.current) / 1000;
     lastTimeRef.current = currentTime;
 
     if (config.isRunning) {
-      // Cập nhật thời gian: tốc độ chậm hơn để dễ quan sát
       setTime(prevTime => prevTime + deltaTime * 0.8);
     }
 
@@ -229,25 +192,22 @@ export const SimpleWaveLab = () => {
     animationRef.current = requestAnimationFrame(animate);
   }, [config.isRunning, ctx, canvas, time, drawWave]);
 
-  // Khởi tạo Canvas và Context khi component mount
   useEffect(() => {
     const canvasElement = document.getElementById('wave-canvas') as HTMLCanvasElement;
     if (canvasElement) {
       const parent = canvasElement.parentElement;
       if (parent) {
-        // Đặt kích thước canvas bằng kích thước container
         canvasElement.width = parent.clientWidth;
         canvasElement.height = Math.min(parent.clientHeight, 400);
 
         setCanvas(canvasElement);
         const newCtx = canvasElement.getContext('2d');
         setCtx(newCtx);
-        if (newCtx) newCtx.imageSmoothingEnabled = true; // Bật làm mịn ảnh
+        if (newCtx) newCtx.imageSmoothingEnabled = true; 
       }
     }
   }, []);
 
-  // Bắt đầu/Dừng vòng lặp animation
   useEffect(() => {
     if (ctx && canvas) {
       lastTimeRef.current = performance.now();
@@ -258,7 +218,6 @@ export const SimpleWaveLab = () => {
     };
   }, [animate, ctx, canvas]);
 
-  // Xử lý sự kiện thay đổi Input
   const handleConfigChange = (key: string, value: string) => {
     setConfig(prev => ({
       ...prev,
@@ -283,7 +242,6 @@ export const SimpleWaveLab = () => {
       if (parent) {
         canvasElement.width = parent.clientWidth;
         canvasElement.height = Math.min(parent.clientHeight, 400);
-        // Buộc vẽ lại sau khi thay đổi kích thước
         if (ctx && canvas) {
             drawWave(ctx, canvasElement.width, canvasElement.height, time);
         }
@@ -291,13 +249,11 @@ export const SimpleWaveLab = () => {
     }
   };
 
-  // Đăng ký sự kiện resize của cửa sổ
   useEffect(() => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [ctx, canvas, time, drawWave]); // Thêm dependencies cần thiết
+  }, [ctx, canvas, time, drawWave]); 
 
-  // Hàm tạo Input Slider
   const SliderInput = ({ label, icon: Icon, value, min, max, step, unit, name }: any) => (
     <div className="space-y-1 p-2 bg-slate-800 rounded-lg shadow-inner border border-slate-700">
       <div className="flex justify-between items-center text-sm font-medium text-slate-300">
@@ -330,14 +286,11 @@ export const SimpleWaveLab = () => {
         </p>
       </header>
 
-      {/* Khu vực mô phỏng */}
       <div className="flex-grow bg-black rounded-xl shadow-2xl overflow-hidden mb-6 p-2 border border-slate-700 relative">
         <canvas id="wave-canvas" className="w-full h-full"></canvas>
       </div>
 
-      {/* Bảng điều khiển và Thông tin */}
       <div className="bg-slate-800/50 rounded-xl shadow-xl p-4 sm:p-6 border border-slate-700 overflow-y-auto">
-        {/* Nút bật/tắt Panel */}
         <button
           onClick={() => setIsPanelOpen(!isPanelOpen)}
           className="w-full flex justify-between items-center p-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition-all text-blue-400 font-semibold mb-3"
@@ -348,7 +301,6 @@ export const SimpleWaveLab = () => {
 
         <div className={`transition-all duration-300 overflow-hidden ${isPanelOpen ? 'max-h-screen opacity-100 pt-2' : 'max-h-0 opacity-0'}`}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {/* Cột 1: Điều khiển chính */}
             <div className="md:col-span-1 space-y-4">
               <h3 className="text-lg font-bold text-white border-b border-slate-600 pb-2 mb-2">Đại Lượng Đầu Vào</h3>
               <SliderInput
@@ -409,7 +361,6 @@ export const SimpleWaveLab = () => {
 
             </div>
 
-            {/* Cột 2: Đại lượng phái sinh */}
             <div className="md:col-span-1 space-y-4">
               <h3 className="text-lg font-bold text-white border-b border-slate-600 pb-2 mb-2">Đại Lượng Tính Toán</h3>
               <div className="space-y-2">
@@ -433,7 +384,6 @@ export const SimpleWaveLab = () => {
                 />
               </div>
               
-               {/* AI Integration */}
                <div className="mt-4 pt-4 border-t border-slate-700">
                     {!aiAnalysis ? (
                         <button 
@@ -446,6 +396,7 @@ export const SimpleWaveLab = () => {
                     ) : (
                         <div className="bg-purple-900/30 border border-purple-500/30 rounded-xl p-3 text-sm text-slate-200 relative animate-in slide-in-from-bottom-2">
                             <button onClick={() => setAiAnalysis('')} className="absolute top-2 right-2 text-slate-400 hover:text-white"><X size={14}/></button>
+                            {/* SCROLLBAR ADDED */}
                             <div className="max-h-60 overflow-y-auto custom-scrollbar pr-2">
                                 <h4 className="font-bold text-purple-400 mb-1 flex items-center gap-2"><Sparkles size={12}/> AI Insight</h4>
                                 <p className="whitespace-pre-wrap text-xs leading-relaxed">{aiAnalysis}</p>

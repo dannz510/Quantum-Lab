@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Settings, Play, Pause, RotateCcw, Sparkles, Loader2, X, Download, Plus, Minus, Zap, Share2 } from 'lucide-react';
+import { Settings, Play, Pause, RotateCcw, Sparkles, Loader2, X, Plus, Zap, Share2 } from 'lucide-react';
 import { analyzeExperimentData } from '../services/gemini';
 import { Language } from '../types';
 
@@ -13,7 +13,7 @@ const calculateGravitationalWaveStrain = (time: number, bhs: BlackHole[], merger
     const timeFactor = timeToCoalescence > 0 ? timeToCoalescence : 0.001; 
     const frequency = 5 + (mergerTime - timeFactor) * 20; 
     const amplitude = 0.0000001 / timeFactor; 
-    const spinBoost = 1 + bhs[0].spin * 0.4 * (1 + spinAlignment * 0.5); // Spin/Alignment effect
+    const spinBoost = 1 + bhs[0].spin * 0.4 * (1 + spinAlignment * 0.5); 
     const strain = Math.sin(time * frequency * spinBoost) * amplitude * spinBoost * 1e-19; 
     return strain;
 };
@@ -22,7 +22,7 @@ interface BlackHole {
   id: number;
   mass: number;
   spin: number; 
-  spinTilt: number; // Góc Spin (Tilt Angle) - Nâng cấp
+  spinTilt: number;
   color: string;
   initialAngle: number;
 }
@@ -48,7 +48,7 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
   const [time, setTime] = useState(0);
   const [eventLog, setEventLog] = useState<Event[]>([]);
   const [finalBHMassLoss, setFinalBHMassLoss] = useState(0);
-  const [recoilVelocity, setRecoilVelocity] = useState(0); // Vận tốc giật lùi (Kick)
+  const [recoilVelocity, setRecoilVelocity] = useState(0);
   const [aiAnalysis, setAiAnalysis] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   
@@ -58,7 +58,6 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
 
   const mergerTime = 10; 
   
-  // --- LOGIC: Cập nhật Nhật ký Sự kiện ---
   useEffect(() => {
     if (time > mergerTime - 2 && time < mergerTime - 1.95 && bhs.length >= 2) {
         const desc = "Quỹ đạo xoắn ốc tăng tốc (Phát hiện tín hiệu Chirp).";
@@ -67,7 +66,7 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
     if (time > mergerTime && time < mergerTime + 0.05 && bhs.length >= 2) {
         const totalMass = bhs.reduce((sum, bh) => sum + bh.mass, 0);
         const massLoss = (totalMass - (totalMass * 0.95)) / totalMass;
-        const kickV = bhs.some(bh => bh.spinTilt > 0) ? 500 : 0; // Simplified kick logic
+        const kickV = bhs.some(bh => bh.spinTilt > 0) ? 500 : 0;
         
         setFinalBHMassLoss(massLoss);
         setRecoilVelocity(kickV);
@@ -77,7 +76,6 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
     }
   }, [time, bhs, mergerTime, eventLog]);
 
-  // --- LOGIC: Vẽ Biểu đồ Strain (GW Spectrum) ---
   const drawStrainPlot = useCallback((currentStrain: number) => {
     const canvas = plotCanvasRef.current;
     if (!canvas) return;
@@ -86,13 +84,11 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
     const w = canvas.width;
     const h = canvas.height;
 
-    // Shift left
     const imageData = ctx.getImageData(1, 0, w - 1, h);
     ctx.putImageData(imageData, 0, 0);
     ctx.fillStyle = '#0f172a'; 
     ctx.fillRect(w - 1, 0, 1, h);
 
-    // Draw center line
     ctx.strokeStyle = '#334155'; 
     ctx.beginPath();
     ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); 
@@ -106,21 +102,24 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
     ctx.fillRect(w - 1, y, 1, 1);
   }, []);
   
-  // Hàm vẽ Accretion Disk & Event Horizon
   const drawAccretionDisk = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number, spin: number, tilt: number, color: string) => {
-    ctx.fillStyle = color;
-    ctx.shadowBlur = 10;
+    // Enhanced Accretion Disk Shader
+    const gradient = ctx.createRadialGradient(x, y, size * 0.5, x, y, size * 2.5);
+    gradient.addColorStop(0, color);
+    gradient.addColorStop(0.5, 'transparent');
+    gradient.addColorStop(1, 'transparent');
+
+    ctx.fillStyle = gradient;
+    ctx.shadowBlur = 20;
     ctx.shadowColor = color;
     
-    // Draw Disk (Ellipse based on tilt)
-    ctx.globalAlpha = 0.4 + spin * 0.4;
+    ctx.globalAlpha = 0.6 + spin * 0.4;
     ctx.beginPath();
-    // Simplified ellipse tilt visualization
     const tiltFactor = 1 - Math.abs(tilt / 90) * 0.3;
     ctx.ellipse(x, y, size * 2.5, size * 2.5 * tiltFactor, 0, 0, Math.PI * 2);
     ctx.fill();
     
-    // Draw Event Horizon (Black Shadow)
+    // Event Horizon
     ctx.globalAlpha = 1.0;
     ctx.shadowBlur = 5;
     ctx.shadowColor = 'white';
@@ -132,7 +131,6 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
     ctx.shadowBlur = 0;
   }
 
-  // --- LOGIC: Vẽ Mô phỏng Chính (Simulation Draw) ---
   const drawSimulation = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -150,7 +148,6 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
     const cx = w/2;
     const cy = h/2;
 
-    // Calculate BH Positions
     const timeLeft = Math.max(0, mergerTime - time);
     const orbitRadius = timeLeft > 0.1 ? (timeLeft / mergerTime) * 100 : 0; 
     const angle = time * (10 / (timeLeft + 1)); 
@@ -160,7 +157,6 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
         let massFraction = bh.mass / bhs.reduce((sum, b) => sum + b.mass, 0);
         let currentDist = orbitRadius * (1 - massFraction); 
         
-        // Simplified Multi-Body Logic
         if (bhs.length === 2) {
             x = cx + Math.cos(angle + bh.initialAngle) * (bh === bhs[0] ? currentDist : -currentDist);
             y = cy + Math.sin(angle + bh.initialAngle) * (bh === bhs[0] ? currentDist : -currentDist);
@@ -176,18 +172,16 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
         return { x, y, size: bh.mass * 10, spin: bh.spin, tilt: bh.spinTilt, color: bh.color };
     });
 
-    // Draw Dynamic Grid (GR Lensing/Wave Ripple)
+    // Gravitational Lensing Grid
     const ripple = currentStrain * 5000; 
     ctx.strokeStyle = '#1e293b';
     ctx.lineWidth = 1;
     
     const drawGridLine = (start: {x: number, y: number}, end: {x: number, y: number}) => {
         ctx.beginPath();
-        
         for(let t=0; t<=1; t+=0.05) {
             const x = start.x + (end.x - start.x) * t;
             const y = start.y + (end.y - start.y) * t;
-            
             let lensingX = 0;
             let lensingY = 0;
             
@@ -200,7 +194,6 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
                 lensingY += dy * warpFactor;
             });
 
-            // Wave ripple effect
             const distToCenter = Math.sqrt((x-cx)**2 + (y-cy)**2);
             const waveEffectY = Math.sin(distToCenter * 0.1 - time * 10) * ripple * Math.exp(-distToCenter/300);
             
@@ -217,13 +210,12 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
     for(let i=0; i<w; i+=gridStep) drawGridLine({x: i, y: 0}, {x: i, y: h});
     for(let j=0; j<h; j+=gridStep) drawGridLine({x: 0, y: j}, {x: w, y: j});
 
-    // Draw Black Holes and Disks
     if (timeLeft > 0.05) {
         bhPositions.forEach(pos => {
             drawAccretionDisk(ctx, pos.x, pos.y, pos.size, pos.spin, pos.tilt, pos.color);
         });
     } else {
-        // Merger Complete
+        // Merger Complete Shockwave
         const finalMassSize = 40; 
         ctx.fillStyle = 'black';
         ctx.strokeStyle = '#ef4444'; 
@@ -232,14 +224,13 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
         ctx.beginPath(); ctx.arc(cx, cy, finalMassSize, 0, Math.PI*2); ctx.fill(); ctx.stroke();
         ctx.shadowBlur = 0;
         
-        // Ringdown Shockwave & Recoil
         const ringdownWaveRadius = finalMassSize + (time-mergerTime)*200;
         ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(0, 1 - (time - mergerTime))})`;
+        ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(cx, cy, ringdownWaveRadius, 0, Math.PI*2);
         ctx.stroke();
         
-        // Recoil Visualization (Kick)
         if (recoilVelocity > 0) {
             ctx.fillStyle = 'yellow';
             ctx.font = 'bold 16px Inter';
@@ -249,22 +240,18 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
     }
   }, [time, bhs, mergerTime, recoilVelocity, drawStrainPlot]);
 
-  // Animation Loop
   useEffect(() => {
     if (!isRunning) return;
-
     const animate = () => {
         setTime(t => t + 0.02);
         if (time > mergerTime + 5) setIsRunning(false);
         drawSimulation();
         reqRef.current = requestAnimationFrame(animate);
     };
-
     reqRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(reqRef.current);
   }, [isRunning, time, drawSimulation, mergerTime]);
   
-  // UI Handlers
   const handleReset = () => {
       setIsRunning(false);
       setTime(0);
@@ -309,14 +296,13 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
   return (
     <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 overflow-hidden bg-slate-900 text-slate-100">
       
-      {/* CỘT THAM SỐ (LEFT PANEL) */}
+      {/* LEFT PANEL */}
       <div className="lg:col-span-3 bg-slate-800 border border-slate-700 rounded-2xl p-4 flex flex-col gap-4 overflow-y-auto custom-scrollbar">
           
           <div className="flex items-center gap-2 text-slate-300 font-bold border-b border-slate-700 pb-2 flex-shrink-0">
             <Settings size={20} className="text-orange-500" /> Cấu Hình Hệ Thống Hố Đen
           </div>
           
-          {/* Điều khiển đa thể */}
           <div className="flex justify-between items-center pb-2 border-b border-slate-700 flex-shrink-0">
               <h3 className="text-sm font-semibold text-slate-400">Hố Đen ({bhs.length}/3)</h3>
               <div className="flex gap-2">
@@ -324,7 +310,6 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
               </div>
           </div>
           
-          {/* Danh sách Hố Đen */}
           <div className="space-y-4 flex-grow overflow-y-auto pr-1 custom-scrollbar">
               {bhs.map((bh, index) => (
                   <div key={bh.id} className={`p-3 rounded-xl border-l-4 ${bh.color === '#f59e0b' ? 'border-orange-500' : bh.color === '#06b6d4' ? 'border-sky-500' : 'border-amber-500'} bg-slate-900 shadow-md`}>
@@ -333,19 +318,16 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
                           <button onClick={() => handleRemoveBH(bh.id)} disabled={bhs.length <= 1} className="text-red-500 hover:text-red-400 disabled:opacity-30"><X size={14}/></button>
                       </div>
 
-                      {/* Control: Mass */}
                       <div>
                          <label className="text-xs text-slate-400 block mb-1">Khối lượng ({bh.mass.toFixed(1)} M☉)</label>
                          <input type="range" min="0.5" max="3" step="0.1" value={bh.mass} onChange={(e) => handleUpdateBH(bh.id, 'mass', Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-orange-500 cursor-pointer" />
                       </div>
                       
-                      {/* Control: Spin */}
                       <div className="mt-2">
                          <label className="text-xs text-slate-400 block mb-1">Tham số Quay (a) ({bh.spin.toFixed(2)})</label>
                          <input type="range" min="0" max="0.99" step="0.01" value={bh.spin} onChange={(e) => handleUpdateBH(bh.id, 'spin', Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-teal-500 cursor-pointer" />
                       </div>
                       
-                      {/* Control: Spin Tilt Angle */}
                       <div className="mt-2">
                          <label className="text-xs text-slate-400 block mb-1">Góc Spin (Độ nghiêng) ({bh.spinTilt}°)</label>
                          <input type="range" min="0" max="90" step="5" value={bh.spinTilt} onChange={(e) => handleUpdateBH(bh.id, 'spinTilt', Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-purple-500 cursor-pointer" />
@@ -355,7 +337,6 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
               ))}
           </div>
 
-          {/* Công cụ Phân tích Kết quả Cuối cùng */}
           <div className="p-3 bg-slate-700 rounded-xl shadow-lg border-l-4 border-red-500 flex-shrink-0">
              <p className="text-sm font-bold text-white mb-1"><Share2 size={14} className='inline mr-1'/> Kết Quả Hợp Nhất</p>
              <p className='text-xs text-slate-300'>Mất Khối lượng (Năng lượng $\gamma$): <span className='text-red-400 font-mono'>{(finalBHMassLoss * 100).toFixed(2)}%</span></p>
@@ -369,6 +350,7 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
                      <div className="flex items-center gap-2 text-purple-400 text-xs font-bold"><Sparkles size={12}/> AI Analysis</div>
                      <button onClick={() => setAiAnalysis('')} className="text-slate-500 hover:text-white p-1 rounded hover:bg-white/10 transition-colors"><X size={14}/></button>
                   </div>
+                  {/* SCROLLBAR ADDED */}
                   <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                      <p className="whitespace-pre-wrap text-xs leading-relaxed">{aiAnalysis}</p>
                   </div>
@@ -384,7 +366,6 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
                 </button>
               )}
           
-            {/* Điều khiển Mô phỏng */}
             <div className="flex gap-2 flex-shrink-0">
                 <button onClick={() => setIsRunning(!isRunning)} className="flex-1 bg-orange-600 hover:bg-orange-500 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50" disabled={time > mergerTime + 3 || bhs.length < 2}>
                     {isRunning ? <Pause size={16}/> : <Play size={16}/>} {isRunning ? 'Dừng' : 'Mô Phỏng'}
@@ -394,10 +375,8 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
           </div>
       </div>
 
-      {/* CỘT MÔ PHỎNG VÀ LOG (RIGHT PANEL) */}
+      {/* RIGHT PANEL */}
       <div className="lg:col-span-9 flex flex-col gap-4">
-          
-          {/* Simulation Canvas */}
           <div className="flex-1 bg-black rounded-xl border border-slate-700 overflow-hidden relative shadow-2xl min-h-[300px]">
               <canvas ref={canvasRef} width={800} height={500} className="w-full h-full object-contain" />
               <div className="absolute top-4 left-4 flex flex-col gap-1">
@@ -411,9 +390,7 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
               </div>
           </div>
           
-          {/* EVENT LOG & GW SPECTRUM */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-shrink-0 min-h-[120px]">
-              {/* Event Log */}
               <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg flex flex-col">
                   <div className="flex items-center gap-2 text-slate-300 font-bold border-b border-slate-700 pb-2 mb-2"><Zap size={16} className="text-yellow-400"/> Nhật Ký Sự Kiện Hợp Nhất</div>
                   <div className="space-y-1 text-xs max-h-24 overflow-y-auto custom-scrollbar">
@@ -430,7 +407,6 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
                   </div>
               </div>
 
-              {/* GW Spectrum Plot */}
               <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg">
                  <div className="text-xs text-slate-500 uppercase flex justify-between items-center">
                      <span>Phổ Tín Hiệu Sóng Hấp Dẫn (Strain h)</span>
