@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import { BrainCircuit, Send, Lightbulb, Sparkles } from 'lucide-react';
 import { solveComplexProblem } from '../services/gemini';
-import ReactMarkdown from 'react-markdown'; // Assuming standard usage, but if not installed, we can render text directly. Since instructions said "Use popular libraries", I will simulate markdown rendering with simple whitespace handling if library issues arise, but for this context I will render raw text nicely or use a simple formatter. 
-
-// Actually, I will write a simple text renderer to avoid unlisted dependency issues if `react-markdown` isn't implicitly allowed in the prompt environment (though it is popular). I'll stick to basic formatting.
 
 export const DeepThinker: React.FC = () => {
   const [problem, setProblem] = useState('');
@@ -42,7 +39,7 @@ export const DeepThinker: React.FC = () => {
       </div>
 
       <div className="flex-1 bg-lab-card rounded-2xl border border-slate-700/50 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
            {!solution && !isThinking && (
              <div className="h-full flex flex-col items-center justify-center text-slate-500 opacity-50">
                 <Lightbulb size={64} className="mb-4" />

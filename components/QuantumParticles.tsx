@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef } from 'react';
 
-export const QuantumParticles: React.FC<{ className?: string }> = ({ className }) => {
+export const QuantumParticles: React.FC<{ className?: string }> = ({ className = "" }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {

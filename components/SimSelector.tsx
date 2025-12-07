@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ArrowLeft, Play, Lock, Film, Activity, Waves, Zap, Magnet, Orbit, Triangle, Droplets, Radio, MoveHorizontal, AlignCenter, Globe, SortAsc, Link2, Aperture, MonitorPlay, Sun, Thermometer, Atom, Layers, Eye, Battery } from 'lucide-react';
 import { AppMode, SimulationStats, Language } from '../types';
@@ -222,17 +221,17 @@ export const SimSelector: React.FC<SimSelectorProps> = ({ setMode, lang }) => {
       case 'pendulum': setMode(AppMode.SIM_RUN_PENDULUM); break;
       case 'inclined': setMode(AppMode.SIM_RUN_INCLINED); break;
       case 'fluids': setMode(AppMode.SIM_RUN_FLUIDS); break;
-      case 'projectile': setMode(AppMode.SIM_RUN_PROJECTILE); break; // Updated
-      case 'collisions': setMode(AppMode.SIM_RUN_COLLISIONS); break; // Updated
-      case 'springs': setMode(AppMode.SIM_RUN_SPRINGS); break; // Updated
+      case 'projectile': setMode(AppMode.SIM_RUN_PROJECTILE); break; 
+      case 'collisions': setMode(AppMode.SIM_RUN_COLLISIONS); break; 
+      case 'springs': setMode(AppMode.SIM_RUN_SPRINGS); break; 
       case 'mould': setMode(AppMode.SIM_RUN_MOULD); break;
       case 'orbits': setMode(AppMode.SIM_RUN_ORBITS); break;
       case 'veo': setMode(AppMode.SIM_RUN_VEO); break;
 
       // Thermodynamics
-      case 'gas': setMode(AppMode.SIM_RUN_GAS); break; // Updated
-      case 'states': setMode(AppMode.SIM_RUN_STATES); break; // Updated
-      case 'friction_heat': setMode(AppMode.SIM_RUN_HEAT); break; // Updated
+      case 'gas': setMode(AppMode.SIM_RUN_GAS); break; 
+      case 'states': setMode(AppMode.SIM_RUN_STATES); break; 
+      case 'friction_heat': setMode(AppMode.SIM_RUN_HEAT); break; 
 
       // Waves
       case 'ripple': setMode(AppMode.SIM_RUN_RIPPLE); break;
@@ -248,13 +247,13 @@ export const SimSelector: React.FC<SimSelectorProps> = ({ setMode, lang }) => {
       case 'slit': setMode(AppMode.SIM_RUN_SLIT); break;
       case 'spectrum': setMode(AppMode.SIM_RUN_SPECTRUM); break;
       case 'tunneling': setMode(AppMode.SIM_RUN_TUNNELING); break;
-      case 'rutherford': setMode(AppMode.SIM_RUN_RUTHERFORD); break; // Updated
+      case 'rutherford': setMode(AppMode.SIM_RUN_RUTHERFORD); break; 
       case 'blackhole': setMode(AppMode.SIM_RUN_BLACKHOLE); break;
 
       // Optics
       case 'optics_prism': setMode(AppMode.SIM_RUN_OPTICS); break;
-      case 'lenses': setMode(AppMode.SIM_RUN_LENSES); break; // Updated
-      case 'color': setMode(AppMode.SIM_RUN_COLOR); break; // Updated
+      case 'lenses': setMode(AppMode.SIM_RUN_LENSES); break; 
+      case 'color': setMode(AppMode.SIM_RUN_COLOR); break; 
 
       default: setMode(AppMode.SIM_PLACEHOLDER); break;
     }

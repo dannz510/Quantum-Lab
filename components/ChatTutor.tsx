@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, User, Bot, Sparkles, Zap } from 'lucide-react';
 import { createChatSession, getFastResponse } from '../services/gemini';
 import { ChatMessage } from '../types';
-import { Chat } from '@google/genai';
+import type { Chat } from '@google/genai';
 
 export const ChatTutor: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);

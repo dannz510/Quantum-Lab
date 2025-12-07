@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Settings, Play, Pause, RotateCcw, Activity, ArrowUpRight, Crosshair, RefreshCw, Triangle, Droplet, Move, ArrowDown, Scale } from 'lucide-react';
 import { analyzeExperimentData } from '../services/gemini';
@@ -12,6 +11,7 @@ interface MechanicsLabProps {
 
 // --- PROJECTILE MOTION LAB (Preserved) ---
 const MechanicsProjectile = ({ lang }: { lang: Language }) => {
+    // ... (Existing Implementation Preserved)
     const [angle, setAngle] = useState(45);
     const [velocity, setVelocity] = useState(50);
     const [gravity, setGravity] = useState(9.8);
@@ -141,8 +141,9 @@ const MechanicsProjectile = ({ lang }: { lang: Language }) => {
     );
 };
 
-// --- INCLINED PLANE LAB ---
+// --- INCLINED PLANE LAB (Preserved) ---
 const MechanicsInclinedPlane = ({ lang }: { lang: Language }) => {
+    // ... (Existing Implementation Preserved)
     const [angle, setAngle] = useState(30);
     const [mass, setMass] = useState(5);
     const [mu, setMu] = useState(0.2); // Friction coeff
@@ -281,121 +282,249 @@ const MechanicsInclinedPlane = ({ lang }: { lang: Language }) => {
     );
 };
 
-// --- FLUIDS (ARCHIMEDES) LAB ---
+// --- FLUIDS (ARCHIMEDES) LAB - UPGRADED ---
 const MechanicsFluids = ({ lang }: { lang: Language }) => {
     const [fluidDensity, setFluidDensity] = useState(1000); // Water
     const [objDensity, setObjDensity] = useState(500); // Wood approx
     const [objVolume, setObjVolume] = useState(0.01); // m^3
-    const [submerged, setSubmerged] = useState(0); // % submerged
+    const [isDragging, setIsDragging] = useState(false);
     
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    
-    // Physics Calc
-    const g = 9.8;
-    const objMass = objDensity * objVolume;
-    const weight = objMass * g;
-    const maxBuoyancy = fluidDensity * objVolume * g;
-    
-    // Equilibrium submerged %
-    // Weight = Buoyancy => mg = rho_fluid * V_sub * g
-    // rho_obj * V * g = rho_fluid * V_sub * g
-    // V_sub/V = rho_obj / rho_fluid
-    const equilibriumRatio = Math.min(1, Math.max(0, objDensity / fluidDensity));
-    
-    useEffect(() => {
-        // Animate to equilibrium
-        let anim: number;
-        const animate = () => {
-            setSubmerged(prev => {
-                const diff = equilibriumRatio - prev;
-                if(Math.abs(diff) < 0.001) return equilibriumRatio;
-                return prev + diff * 0.05;
-            });
-            anim = requestAnimationFrame(animate);
-        }
-        anim = requestAnimationFrame(animate);
-        return () => cancelAnimationFrame(anim);
-    }, [equilibriumRatio]);
+    // Physics State
+    const [objY, setObjY] = useState(100); // px from top
+    const [velocity, setVelocity] = useState(0);
+    const [overflow, setOverflow] = useState(0); // Volume displaced
+    const [graphData, setGraphData] = useState<{depth: number, fb: number}[]>([]);
 
-    const draw = () => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const reqRef = useRef(0);
+    const lastTimeRef = useRef(0);
+    
+    // Constants
+    const g = 9.8;
+    const pxPerMeter = 1000; // Scale
+    const waterLevelY = 300; // px from top
+    const floorY = 450;
+    const objSize = 80;
+
+    // Mouse Handler
+    const handleMouseDown = (e: React.MouseEvent) => {
+        const rect = canvasRef.current?.getBoundingClientRect();
+        if(!rect) return;
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const centerX = rect.width / 2;
+        
+        // Hit test
+        if (Math.abs(mouseX - centerX) < objSize/2 && Math.abs(mouseY - objY) < objSize/2) {
+            setIsDragging(true);
+            setVelocity(0);
+        }
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (isDragging) {
+            const rect = canvasRef.current?.getBoundingClientRect();
+            if(rect) {
+                const mouseY = e.clientY - rect.top;
+                setObjY(Math.max(objSize/2, Math.min(floorY - objSize/2, mouseY)));
+            }
+        }
+    };
+
+    const handleMouseUp = () => setIsDragging(false);
+
+    // Physics Loop
+    useEffect(() => {
+        const update = (time: number) => {
+            if (!lastTimeRef.current) lastTimeRef.current = time;
+            const dt = Math.min((time - lastTimeRef.current) / 1000, 0.05); // Limit dt step
+            lastTimeRef.current = time;
+
+            if (!isDragging) {
+                // Calculate Submerged Depth
+                const bottomY = objY + objSize/2;
+                const submergedH = Math.max(0, Math.min(objSize, bottomY - (waterLevelY - objSize/2 + 40))); // Approx offset
+                const submergedRatio = Math.min(1, Math.max(0, (bottomY - 200) / objSize)); // Simplified visual overlap logic
+                
+                // Better Logic: Water Surface is at `waterLevelY`
+                // Top of box is `objY - objSize/2`
+                // Bottom of box is `objY + objSize/2`
+                
+                // Water top is roughly 250 in canvas coords (based on drawing below)
+                const waterSurface = 250;
+                const boxBottom = objY + objSize/2;
+                const boxTop = objY - objSize/2;
+                
+                let subHeight = 0;
+                if (boxBottom > waterSurface) {
+                    subHeight = Math.min(objSize, boxBottom - waterSurface);
+                }
+                const subRatio = subHeight / objSize;
+
+                // Forces
+                const volumeSub = objVolume * subRatio;
+                const mass = objDensity * objVolume;
+                const weight = mass * g;
+                const buoyantForce = fluidDensity * volumeSub * g;
+                const drag = -velocity * 2; // Simple drag
+                
+                const netForce = weight - buoyantForce + drag;
+                const acc = netForce / mass;
+                
+                let newVel = velocity + acc * dt * 50; // Scale factor
+                let newY = objY + newVel * dt * 5;
+
+                // Floor Collision
+                if (newY > floorY - objSize/2) {
+                    newY = floorY - objSize/2;
+                    newVel = -newVel * 0.2; // Bounce
+                }
+                
+                setObjY(newY);
+                setVelocity(newVel);
+                
+                // Update Overflow & Graph
+                setOverflow(prev => Math.max(prev, volumeSub * 1000)); // Liters
+                if (subRatio > 0) {
+                    setGraphData(prev => [...prev.slice(-50), { depth: subHeight, fb: buoyantForce }]);
+                }
+            }
+            
+            reqRef.current = requestAnimationFrame(update);
+        };
+        reqRef.current = requestAnimationFrame(update);
+        return () => cancelAnimationFrame(reqRef.current);
+    }, [isDragging, objY, velocity, fluidDensity, objDensity, objVolume]);
+
+    // Drawing
+    useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
+        if(!ctx) return;
+        
         const W = canvas.width;
         const H = canvas.height;
-        const centerX = W/2;
-        const groundY = H - 50;
-
+        const centerX = W/2 - 100; // Shift left to make room for graph
+        
         ctx.clearRect(0,0,W,H);
         
-        // Beaker
-        const beakerW = 300;
-        const beakerH = 300;
-        const beakerX = centerX - beakerW/2;
-        const beakerY = groundY - beakerH;
+        // 1. Draw Beaker
+        const beakerX = centerX - 100;
+        const beakerY = 250;
+        const beakerW = 200;
+        const beakerH = 200;
         
         // Water
-        const waterLevelBase = 200;
-        // Water rises as obj submerges
-        const waterRise = (objVolume * submerged * 1000); // Visual scale
-        const waterH = waterLevelBase + waterRise;
-        
         ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
-        ctx.fillRect(beakerX, groundY - waterH, beakerW, waterH);
+        ctx.fillRect(beakerX, beakerY, beakerW, beakerH);
         
-        // Object
-        const objSize = 100;
-        // Position depends on submerged
-        // If floating, bottom of obj is at water surface + submerged depth
-        const objY = groundY - waterH + (objSize * (1-submerged)) - objSize/2;
+        // Beaker Lines
+        ctx.strokeStyle = 'white'; ctx.lineWidth = 3;
+        ctx.strokeRect(beakerX, beakerY, beakerW, beakerH);
         
-        ctx.fillStyle = objDensity > 1000 ? '#94a3b8' : '#d97706'; // Stone vs Wood color
-        ctx.fillRect(centerX - objSize/2, objY, objSize, objSize);
-        ctx.strokeStyle = 'white'; ctx.strokeRect(centerX - objSize/2, objY, objSize, objSize);
+        // Spout
+        ctx.beginPath(); ctx.moveTo(beakerX + beakerW, beakerY + 20); 
+        ctx.lineTo(beakerX + beakerW + 30, beakerY + 30);
+        ctx.stroke();
         
-        // Beaker Outline
-        ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 4;
-        ctx.beginPath(); ctx.moveTo(beakerX, beakerY); ctx.lineTo(beakerX, groundY); ctx.lineTo(beakerX + beakerW, groundY); ctx.lineTo(beakerX + beakerW, beakerY); ctx.stroke();
+        // 2. Draw Overflow Cup
+        const cupX = beakerX + beakerW + 20;
+        const cupY = beakerY + 100;
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(cupX, cupY, 60, 100);
+        // Overflow water
+        const overflowH = Math.min(100, overflow * 5); // Visual scale
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.6)';
+        ctx.fillRect(cupX, cupY + 100 - overflowH, 60, overflowH);
         
-        // Forces
-        const fb = fluidDensity * (objVolume * submerged) * g;
-        const scale = 2; // px per N
+        // 3. Draw Object
+        ctx.fillStyle = objDensity > 1000 ? '#64748b' : '#d97706';
+        ctx.fillRect(centerX - objSize/2, objY - objSize/2, objSize, objSize);
+        ctx.strokeStyle = 'white'; ctx.strokeRect(centerX - objSize/2, objY - objSize/2, objSize, objSize);
         
-        // Gravity Vector
-        ctx.beginPath(); ctx.moveTo(centerX, objY + objSize/2); ctx.lineTo(centerX, objY + objSize/2 + weight*scale/10); 
+        // 4. Force Vectors (if submerged or dragging)
+        const centerObjY = objY;
+        const subHeight = Math.min(objSize, Math.max(0, (objY + objSize/2) - 250));
+        const subRatio = subHeight / objSize;
+        const fb = fluidDensity * (objVolume * subRatio) * g;
+        const fg = objDensity * objVolume * g;
+        
+        // Fg (Red Down)
+        ctx.beginPath(); ctx.moveTo(centerX, centerObjY); ctx.lineTo(centerX, centerObjY + fg * 2);
         ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3; ctx.stroke();
+        // Fb (Blue Up)
+        if (fb > 0) {
+            ctx.beginPath(); ctx.moveTo(centerX, centerObjY); ctx.lineTo(centerX, centerObjY - fb * 2);
+            ctx.strokeStyle = '#3b82f6'; ctx.stroke();
+        }
         
-        // Buoyancy Vector
-        ctx.beginPath(); ctx.moveTo(centerX, objY + objSize/2); ctx.lineTo(centerX, objY + objSize/2 - fb*scale/10);
-        ctx.strokeStyle = '#3b82f6'; ctx.stroke();
-    };
-    
-    useEffect(draw, [submerged, fluidDensity, objDensity, objVolume]);
+        // 5. Real-time Graph (Right Side)
+        const graphX = W - 250;
+        const graphY = 50;
+        const graphW = 200;
+        const graphH = 150;
+        
+        ctx.fillStyle = '#1e293b'; ctx.fillRect(graphX, graphY, graphW, graphH);
+        ctx.strokeStyle = '#475569'; ctx.strokeRect(graphX, graphY, graphW, graphH);
+        
+        ctx.beginPath();
+        ctx.strokeStyle = '#34d399'; ctx.lineWidth = 2;
+        graphData.forEach((pt, i) => {
+            const x = graphX + (pt.depth / objSize) * graphW;
+            const y = graphY + graphH - (pt.fb / (fluidDensity * objVolume * g)) * graphH;
+            if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        });
+        ctx.stroke();
+        
+        ctx.fillStyle = 'white'; ctx.font = '10px sans-serif';
+        ctx.fillText("Buoyant Force vs Depth", graphX + 50, graphY - 10);
+
+    }, [objY, overflow, graphData, objDensity, fluidDensity, objVolume]);
 
     return (
         <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 bg-slate-900 text-slate-100">
              <div className="lg:col-span-3 bg-slate-800 border border-slate-700 rounded-2xl p-4 flex flex-col gap-4">
                  <div className="flex items-center gap-2 font-bold text-slate-300 border-b border-slate-700 pb-2">
-                    <Droplet size={20} className="text-sky-500" /> Archimedes Principle
+                    <Droplet size={20} className="text-sky-500" /> Archimedes Engine
                 </div>
+                
+                <div className="p-2 bg-sky-900/30 rounded border border-sky-500/30 text-xs text-sky-200">
+                    <Move size={14} className="inline mr-1"/> Drag the block to submerge it!
+                </div>
+
                 <div className="space-y-4">
                     <div><label className="text-xs text-slate-400">Fluid Density ({fluidDensity} kg/m³)</label><input type="range" min="800" max="1200" value={fluidDensity} onChange={e => setFluidDensity(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-sky-500"/></div>
                     <div><label className="text-xs text-slate-400">Object Density ({objDensity} kg/m³)</label><input type="range" min="200" max="2000" step="100" value={objDensity} onChange={e => setObjDensity(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-orange-500"/></div>
                 </div>
                 
-                <div className="p-3 bg-slate-900 rounded-xl space-y-2 font-mono text-xs">
-                    <div className="flex justify-between"><span className="text-slate-400">Weight (Fg):</span> <span className="text-red-400">{weight.toFixed(1)} N</span></div>
-                    <div className="flex justify-between"><span className="text-slate-400">Buoyancy (Fb):</span> <span className="text-blue-400">{(fluidDensity * objVolume * submerged * g).toFixed(1)} N</span></div>
-                    <div className="flex justify-between border-t border-slate-700 pt-1"><span className="text-slate-200">Net Force:</span> <span className="text-green-400">{(weight - fluidDensity * objVolume * submerged * g).toFixed(1)} N</span></div>
+                <div className="p-3 bg-slate-900 rounded-xl space-y-2 font-mono text-xs mt-auto">
+                    <div className="flex justify-between"><span className="text-slate-400">Mass:</span> <span className="text-white">{(objDensity*objVolume).toFixed(2)} kg</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Displaced Vol:</span> <span className="text-sky-400">{overflow.toFixed(2)} mL</span></div>
                 </div>
+                
+                <button onClick={() => {setObjY(100); setVelocity(0); setOverflow(0); setGraphData([])}} className="w-full py-2 bg-slate-700 rounded hover:bg-slate-600"><RotateCcw size={16} className="mx-auto"/></button>
              </div>
-             <div className="lg:col-span-9 bg-black rounded-xl border border-slate-700 shadow-2xl"><canvas ref={canvasRef} width={800} height={500} className="w-full h-full object-contain" /></div>
+             <div className="lg:col-span-9 bg-black rounded-xl border border-slate-700 shadow-2xl relative">
+                 <canvas 
+                    ref={canvasRef} 
+                    width={800} 
+                    height={500} 
+                    className="w-full h-full object-contain cursor-move"
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                 />
+                 <div className="absolute top-2 left-2 text-xs text-slate-500">Interactive Physics Canvas</div>
+             </div>
         </div>
     );
 };
 
 // --- COLLISION LAB (Preserved but integrated) ---
 const MechanicsCollisions = ({ lang }: { lang: Language }) => {
+    // ... (Existing Implementation) ...
     const [balls, setBalls] = useState([
         { x: 100, y: 250, vx: 5, vy: 0, r: 20, m: 5, color: '#ef4444' },
         { x: 400, y: 250, vx: 0, vy: 0, r: 20, m: 5, color: '#3b82f6' }
@@ -473,6 +602,7 @@ const MechanicsCollisions = ({ lang }: { lang: Language }) => {
 
 // --- SPRINGS LAB (Preserved but integrated) ---
 const MechanicsSprings = ({ lang }: { lang: Language }) => {
+    // ... (Existing Implementation) ...
     const [k, setK] = useState(50); const [m, setM] = useState(10); const [damping, setDamping] = useState(0.5);
     const [y, setY] = useState(200); const [vy, setVy] = useState(0); const [isRunning, setIsRunning] = useState(false);
     const canvasRef = useRef<HTMLCanvasElement>(null); const reqRef = useRef(0); const equilibriumY = 250;

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { PieChart, TrendingUp, Zap, ChevronRight, Activity, BookOpen, Star, Clock, Trophy } from 'lucide-react';
 import { AppMode, Language } from '../types';
@@ -20,8 +19,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ setMode, sessionSeconds, l
   };
 
   const getTopLabs = () => {
-      const sorted = Object.entries(labVisits).sort(([, a], [, b]) => (b as number) - (a as number));
-      return sorted.slice(0, 3).map(([key, count], idx) => {
+      // Safety check to prevent Object.entries from crashing on undefined
+      const visits = labVisits || {};
+      const entries = Object.entries(visits);
+      
+      // Sort by visit count descending
+      const sorted = entries.sort((a, b) => {
+          const countA = a[1] || 0;
+          const countB = b[1] || 0;
+          return countB - countA;
+      });
+
+      return sorted.slice(0, 3).map((entry, idx) => {
+          const key = entry[0];
+          const count = entry[1];
           // Simple map from key to name (simplified)
           const name = key.replace('SIM_RUN_', '').replace('_', ' ');
           return { name, count, rank: idx + 1 };
