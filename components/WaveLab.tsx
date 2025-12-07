@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Settings, Play, Pause, RotateCcw, Volume2, Wind, Eye, Target, Waves, Ruler, LayoutGrid, Loader2, Sparkles, X, Car, Plane, Star } from 'lucide-react';
+import { Settings, Play, Pause, RotateCcw, Volume2, Wind, Eye, Target, Waves, Ruler, LayoutGrid, Loader2, Sparkles, X, Car, Plane, Star, VolumeX } from 'lucide-react';
 import { AppMode, Language } from '../types';
 import { analyzeExperimentData } from '../services/gemini';
+import { SoundEngine } from '../services/sound';
 
 interface WaveLabProps {
   mode: AppMode;
@@ -16,6 +17,10 @@ const WavesDopplerEffect = ({ lang }: { lang: Language }) => {
     const [sourceFrequency, setSourceFrequency] = useState(10); 
     const [sourceType, setSourceType] = useState<'car'|'jet'|'star'>('car');
     
+    // Audio State
+    const [audioEnabled, setAudioEnabled] = useState(false);
+    const audioRef = useRef<any>(null);
+
     const [time, setTime] = useState(0);
     const [aiAnalysis, setAiAnalysis] = useState<string>('');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -87,6 +92,24 @@ const WavesDopplerEffect = ({ lang }: { lang: Language }) => {
             ctx.beginPath(); ctx.arc(obs.x, obs.y, 8, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = 'white'; ctx.font = '12px sans-serif'; ctx.fillText(`${obs.freq.toFixed(1)} Hz`, obs.x - 20, obs.y - 15);
         });
+        
+        // AUDIO UPDATE
+        if (audioEnabled && isRunning && audioRef.current) {
+            // Simulate an observer at X=600 (Right side)
+            const obsX = 600;
+            const dx = obsX - sourceX;
+            // Frequency shift relative to stationary observer at X=600
+            const f_audio = sourceFrequency * (V_wave / (V_wave - V_source * Math.sign(-dx)));
+            
+            // Map freq to audible range (e.g. 10Hz sim -> 200Hz audio)
+            const audibleFreq = Math.min(2000, Math.max(100, Math.abs(f_audio) * 20)); 
+            
+            // Volume based on distance
+            const dist = Math.abs(dx);
+            const vol = Math.min(1, 10000 / (dist*dist + 500));
+            
+            audioRef.current.update(audibleFreq, vol);
+        }
 
         // Graph Drawing (Observer B Freq over time)
         const gCanvas = graphRef.current;
@@ -105,10 +128,25 @@ const WavesDopplerEffect = ({ lang }: { lang: Language }) => {
             }
         }
 
-    }, [sourceVelocity, waveSpeed, sourceFrequency, time, sourceType]);
+    }, [sourceVelocity, waveSpeed, sourceFrequency, time, sourceType, audioEnabled, isRunning]);
 
     useEffect(() => {
-        if (!isRunning) return;
+        if (!isRunning) {
+            if (audioRef.current) {
+                audioRef.current.stop();
+                audioRef.current = null;
+            }
+            return;
+        }
+
+        // Start Audio if enabled
+        if (audioEnabled && !audioRef.current) {
+            audioRef.current = SoundEngine.createDopplerDrone();
+        } else if (!audioEnabled && audioRef.current) {
+            audioRef.current.stop();
+            audioRef.current = null;
+        }
+
         const animate = () => {
             setTime(t => t + 0.05);
             drawSimulation();
@@ -116,7 +154,14 @@ const WavesDopplerEffect = ({ lang }: { lang: Language }) => {
         };
         reqRef.current = requestAnimationFrame(animate);
         return () => cancelAnimationFrame(reqRef.current);
-    }, [isRunning, drawSimulation]);
+    }, [isRunning, drawSimulation, audioEnabled]);
+    
+    // Cleanup audio on unmount
+    useEffect(() => {
+        return () => {
+             if (audioRef.current) audioRef.current.stop();
+        };
+    }, []);
     
     useEffect(() => {
         drawSimulation();
@@ -126,6 +171,10 @@ const WavesDopplerEffect = ({ lang }: { lang: Language }) => {
         setIsRunning(false);
         setTime(0);
         setSourceVelocity(0);
+        if (audioRef.current) {
+            audioRef.current.stop();
+            audioRef.current = null;
+        }
         if(graphRef.current) {
              const ctx = graphRef.current.getContext('2d');
              if(ctx) ctx.clearRect(0,0,graphRef.current.width, graphRef.current.height);
@@ -164,6 +213,17 @@ const WavesDopplerEffect = ({ lang }: { lang: Language }) => {
                     <button onClick={() => setSourceType('car')} className={`p-2 flex-1 rounded ${sourceType === 'car' ? 'bg-indigo-600' : 'bg-slate-700'}`}><Car size={16} className="mx-auto"/></button>
                     <button onClick={() => setSourceType('jet')} className={`p-2 flex-1 rounded ${sourceType === 'jet' ? 'bg-indigo-600' : 'bg-slate-700'}`}><Plane size={16} className="mx-auto"/></button>
                     <button onClick={() => setSourceType('star')} className={`p-2 flex-1 rounded ${sourceType === 'star' ? 'bg-indigo-600' : 'bg-slate-700'}`}><Star size={16} className="mx-auto"/></button>
+                </div>
+                
+                <div className="flex justify-between items-center p-3 bg-slate-900 rounded-xl">
+                    <span className="text-xs font-bold text-slate-300">Âm thanh (Real-time)</span>
+                    <button 
+                        onClick={() => setAudioEnabled(!audioEnabled)}
+                        className={`p-2 rounded-full transition-colors ${audioEnabled ? 'bg-green-600 text-white' : 'bg-slate-700 text-slate-400'}`}
+                        title="Bật/Tắt mô phỏng âm thanh Doppler"
+                    >
+                        {audioEnabled ? <Volume2 size={16}/> : <VolumeX size={16}/>}
+                    </button>
                 </div>
 
                 <div className="flex flex-col gap-2 mt-auto">

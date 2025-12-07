@@ -4,6 +4,7 @@ import { Play, Pause, RotateCcw, Settings, Loader2, Sparkles, X, Activity, Ruler
 import { calculateLargeAnglePeriod, calculateEnergy, stepPendulumRK4, calculatePendulumForces } from '../services/physics';
 import { analyzeExperimentData } from '../services/gemini';
 import { Material, DataPoint, Language } from '../types';
+import { SoundEngine } from '../services/sound';
 
 interface PendulumLabProps {
   lang: Language;
@@ -49,6 +50,9 @@ export const PendulumLab: React.FC<PendulumLabProps> = ({ lang }) => {
   const lastTimeRef = useRef<number>(0);
   const physicsState = useRef({ theta: initialAngle * (Math.PI / 180), omega: 0 });
   const graphCanvasRef = useRef<HTMLCanvasElement>(null);
+  
+  // Sound
+  const whooshRef = useRef<any>(null);
 
   // Derived Values
   const currentMaterial = MATERIALS.find(m => m.id === materialId) || MATERIALS[0];
@@ -78,6 +82,11 @@ export const PendulumLab: React.FC<PendulumLabProps> = ({ lang }) => {
     setAngle(next.theta);
     setVelocity(next.omega);
     setTime(t => t + dt);
+    
+    // SOUND UPDATE
+    if (whooshRef.current) {
+        whooshRef.current.update(Math.abs(next.omega * length)); // Pass linear speed
+    }
 
     // Update Trace
     if (showTrace && Math.floor(timestamp) % 3 === 0) { // Throttle trace updates
@@ -105,11 +114,19 @@ export const PendulumLab: React.FC<PendulumLabProps> = ({ lang }) => {
   useEffect(() => {
     if (isRunning) {
        lastTimeRef.current = performance.now();
+       if (!whooshRef.current) whooshRef.current = SoundEngine.createWhoosh();
        requestRef.current = requestAnimationFrame(animateRef);
     } else {
        cancelAnimationFrame(requestRef.current);
+       if (whooshRef.current) {
+           whooshRef.current.stop();
+           whooshRef.current = null;
+       }
     }
-    return () => cancelAnimationFrame(requestRef.current);
+    return () => {
+        cancelAnimationFrame(requestRef.current);
+        if (whooshRef.current) whooshRef.current.stop();
+    };
   }, [isRunning, simSpeed, length, damping, currentMaterial, showTrace]);
 
   const drawRealtimeGraph = (newPoint: DataPoint) => {
@@ -146,6 +163,10 @@ export const PendulumLab: React.FC<PendulumLabProps> = ({ lang }) => {
     setDataPoints([]);
     setTraceHistory([]);
     setAiAnalysis('');
+    if (whooshRef.current) {
+       whooshRef.current.stop();
+       whooshRef.current = null;
+    }
     const canvas = graphCanvasRef.current;
     if (canvas) {
         const ctx = canvas.getContext('2d');

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Atom, MessageSquare, Film, Brain, Search, LayoutDashboard, ChevronRight, X, Globe } from 'lucide-react';
 import { VeoLab } from './components/VeoLab';
 import { ChatTutor } from './components/ChatTutor';
@@ -15,12 +15,36 @@ import { WaveLab } from './components/WaveLab';
 import { MouldLab } from './components/MouldLab';
 import { BlackHoleLab } from './components/BlackHoleLab';
 import { SimpleWaveLab } from './components/SimpleWaveLab';
+import { OpticsLab } from './components/OpticsLab'; 
+import { ThermodynamicsLab } from './components/ThermodynamicsLab'; // NEW IMPORT
+import { PlaceholderLab } from './components/PlaceholderLab';
 import { AppMode, Language } from './types';
+import { SoundEngine } from './services/sound';
 
 function App() {
   const [mode, setMode] = useState<AppMode>(AppMode.DASHBOARD);
   const [showChatWidget, setShowChatWidget] = useState(false);
   const [lang, setLang] = useState<Language>('en');
+
+  // Play sound on mode change
+  useEffect(() => {
+    SoundEngine.playNav();
+  }, [mode]);
+
+  // Init audio on first click
+  useEffect(() => {
+    const initAudio = () => {
+        SoundEngine.init();
+        window.removeEventListener('click', initAudio);
+        window.removeEventListener('touchstart', initAudio);
+    };
+    window.addEventListener('click', initAudio);
+    window.addEventListener('touchstart', initAudio);
+    return () => {
+        window.removeEventListener('click', initAudio);
+        window.removeEventListener('touchstart', initAudio);
+    };
+  }, []);
 
   const t = (en: string, vi: string) => lang === 'vi' ? vi : en;
 
@@ -40,33 +64,6 @@ function App() {
     </button>
   );
 
-  const getHeaderTitle = (m: AppMode) => {
-    switch (m) {
-      case AppMode.DASHBOARD: return t("Laboratory Dashboard", "Bảng Điều Khiển Lab");
-      case AppMode.SIM_SELECTOR: return t("Select Experiment", "Chọn Thí Nghiệm");
-      case AppMode.SIM_RUN_PENDULUM: return t("Simple Pendulum Lab", "Phòng Lab Con Lắc Đơn");
-      case AppMode.SIM_RUN_VEO: return t("Veo Generative Lab", "Phòng Lab Tạo Sinh Veo");
-      case AppMode.SIM_RUN_CIRCUIT: return t("RLC Circuit Builder", "Xây Dựng Mạch RLC");
-      case AppMode.SIM_RUN_SLIT: return t("Double Slit Experiment", "Thí Nghiệm Khe Y-âng");
-      case AppMode.SIM_RUN_INCLINED: return t("Inclined Plane Dynamics", "Động Lực Học Mặt Phẳng Nghiêng");
-      case AppMode.SIM_RUN_FLUIDS: return t("Archimedes Fluid Lab", "Phòng Lab Thủy Lực Archimedes");
-      case AppMode.SIM_RUN_ORBITS: return t("Gravitational Orbits", "Quỹ Đạo Hấp Dẫn");
-      case AppMode.SIM_RUN_OSCILLOSCOPE: return t("Virtual Oscilloscope", "Dao Động Ký Ảo");
-      case AppMode.SIM_RUN_INDUCTION: return t("Faraday's Law Induction", "Cảm Ứng Định Luật Faraday");
-      case AppMode.SIM_RUN_SPECTRUM: return t("Atomic Spectrum Analysis", "Phân Tích Phổ Nguyên Tử");
-      case AppMode.SIM_RUN_TUNNELING: return t("Quantum Tunneling", "Hiệu Ứng Đường Hầm");
-      case AppMode.SIM_RUN_RIPPLE: return t("Ripple Tank 3D", "Bể Sóng 3D");
-      case AppMode.SIM_RUN_DOPPLER: return t("Doppler Effect", "Hiệu Ứng Doppler");
-      case AppMode.SIM_RUN_MOULD: return t("Chain Fountain (Mould)", "Hiệu Ứng Mould");
-      case AppMode.SIM_RUN_BLACKHOLE: return t("Black Hole Merger", "Hợp Nhất Hố Đen");
-      case AppMode.SIM_RUN_SIMPLE_WAVE: return t("Simple Wave Simulation", "Mô Phỏng Sóng Cơ Bản");
-      case AppMode.CHAT_TUTOR: return t("AI Physics Tutor", "Gia Sư Vật Lý AI");
-      case AppMode.DEEP_THINK: return t("Deep Reasoning Engine", "Động Cơ Suy Luận Sâu");
-      case AppMode.SEARCH_GROUND: return t("Live Research Terminal", "Thiết Bị Nghiên Cứu Trực Tuyến");
-      default: return "Quantum Lab AI";
-    }
-  };
-
   return (
     <div className="flex h-screen w-full overflow-hidden bg-lab-dark text-slate-200 font-sans selection:bg-lab-accent/30 relative">
       
@@ -78,7 +75,7 @@ function App() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-white tracking-tight">Quantum Lab</h1>
-            <p className="text-xs text-slate-500 font-mono">v4.0 AI-SIM</p>
+            <p className="text-xs text-slate-500 font-mono">v5.0 PRO</p>
           </div>
         </div>
 
@@ -99,7 +96,7 @@ function App() {
                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
                {t("System Operational", "Hệ Thống Sẵn Sàng")}
              </div>
-             <p className="text-xs text-slate-500">Gemini Pro Active</p>
+             <p className="text-xs text-slate-500">Gemini 3 Pro Active</p>
            </div>
         </div>
       </aside>
@@ -109,7 +106,7 @@ function App() {
         {/* Top Bar */}
         <header className="h-16 border-b border-slate-800/50 flex items-center justify-between px-8 bg-lab-dark/80 backdrop-blur-md sticky top-0 z-10">
           <h2 className="text-xl font-semibold text-white">
-            {getHeaderTitle(mode)}
+            {mode === AppMode.DASHBOARD ? t("Laboratory Dashboard", "Bảng Điều Khiển") : t("Physics Simulation", "Mô Phỏng Vật Lý")}
           </h2>
           <div className="flex items-center gap-4">
              {/* Language Toggle */}
@@ -136,7 +133,10 @@ function App() {
           {/* Mechanics Labs */}
           {(mode === AppMode.SIM_RUN_INCLINED || 
             mode === AppMode.SIM_RUN_FLUIDS || 
-            mode === AppMode.SIM_RUN_ORBITS) && 
+            mode === AppMode.SIM_RUN_ORBITS ||
+            mode === AppMode.SIM_RUN_PROJECTILE ||
+            mode === AppMode.SIM_RUN_COLLISIONS ||
+            mode === AppMode.SIM_RUN_SPRINGS) && 
             <MechanicsLab mode={mode} lang={lang} />}
 
           {/* Electronics Labs */}
@@ -148,7 +148,8 @@ function App() {
           {/* Quantum Labs */}
           {(mode === AppMode.SIM_RUN_SLIT || 
             mode === AppMode.SIM_RUN_SPECTRUM || 
-            mode === AppMode.SIM_RUN_TUNNELING) && 
+            mode === AppMode.SIM_RUN_TUNNELING ||
+            mode === AppMode.SIM_RUN_RUTHERFORD) && 
             <QuantumLab mode={mode} lang={lang} />}
             
           {/* Wave Labs */}
@@ -160,6 +161,21 @@ function App() {
           {mode === AppMode.SIM_RUN_MOULD && <MouldLab lang={lang} />}
           {mode === AppMode.SIM_RUN_BLACKHOLE && <BlackHoleLab lang={lang} />}
           {mode === AppMode.SIM_RUN_SIMPLE_WAVE && <SimpleWaveLab />}
+          
+          {/* Thermodynamics */}
+          {(mode === AppMode.SIM_RUN_GAS || 
+            mode === AppMode.SIM_RUN_STATES || 
+            mode === AppMode.SIM_RUN_HEAT) && 
+            <ThermodynamicsLab mode={mode === AppMode.SIM_RUN_GAS ? 'gas' : mode === AppMode.SIM_RUN_STATES ? 'states' : 'friction_heat'} lang={lang} />}
+
+          {/* Optics */}
+          {(mode === AppMode.SIM_RUN_OPTICS ||
+            mode === AppMode.SIM_RUN_LENSES ||
+            mode === AppMode.SIM_RUN_COLOR) && 
+            <OpticsLab mode={mode} lang={lang} />}
+          
+          {/* Placeholder for others */}
+          {mode === AppMode.SIM_PLACEHOLDER && <PlaceholderLab />}
 
           {/* AI Tools */}
           {mode === AppMode.CHAT_TUTOR && <ChatTutor />}

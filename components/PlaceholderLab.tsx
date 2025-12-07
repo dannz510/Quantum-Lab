@@ -1,54 +1,52 @@
 
 import React from 'react';
-import { Settings, Save, AlertCircle, Hammer } from 'lucide-react';
+import { Settings, Save, AlertCircle, Hammer, Construction, CircuitBoard } from 'lucide-react';
 
 interface PlaceholderLabProps {
-  title: string;
+  title?: string;
 }
 
-export const PlaceholderLab: React.FC<PlaceholderLabProps> = ({ title }) => {
+export const PlaceholderLab: React.FC<PlaceholderLabProps> = ({ title = "Lab Under Construction" }) => {
   return (
-    <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 overflow-hidden">
-      
-      {/* COLUMN 1: CONTROL PANEL */}
-      <div className="lg:col-span-3 bg-lab-card border border-slate-700 rounded-2xl p-4 flex flex-col gap-6 opacity-50 pointer-events-none select-none">
-        <div className="flex items-center gap-2 text-slate-300 font-bold border-b border-slate-700 pb-2">
-          <Settings size={20} /> Experiment Setup
-        </div>
-        <div className="space-y-4">
-            <div className="h-8 bg-slate-800 rounded w-full"></div>
-            <div className="h-8 bg-slate-800 rounded w-3/4"></div>
-            <div className="h-20 bg-slate-800 rounded w-full"></div>
-        </div>
-      </div>
+    <div className="h-full flex flex-col items-center justify-center p-8 bg-slate-900 relative overflow-hidden">
+      {/* Background Grid Animation */}
+      <div className="absolute inset-0 opacity-10" style={{ 
+          backgroundImage: 'linear-gradient(#3b82f6 1px, transparent 1px), linear-gradient(90deg, #3b82f6 1px, transparent 1px)', 
+          backgroundSize: '50px 50px',
+          animation: 'pulse 4s infinite' 
+      }}></div>
 
-      {/* COLUMN 2: MAIN VIEWPORT */}
-      <div className="lg:col-span-6 flex flex-col gap-4">
-        <div className="flex-1 bg-slate-900 rounded-2xl border border-slate-700 relative overflow-hidden flex flex-col items-center justify-center text-center p-8">
-             <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mb-6 animate-pulse">
-                <Hammer size={40} className="text-slate-500" />
+      <div className="relative z-10 max-w-2xl text-center space-y-8 p-12 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-2xl">
+         <div className="relative">
+             <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full animate-pulse"></div>
+             <div className="w-24 h-24 bg-slate-900 border-2 border-dashed border-blue-500/50 rounded-full flex items-center justify-center mx-auto relative z-10">
+                <CircuitBoard size={48} className="text-blue-400 animate-spin-slow" />
              </div>
-             <h2 className="text-2xl font-bold text-white mb-2">{title}</h2>
-             <p className="text-slate-400 max-w-md">
-               This simulation module is currently under active development. The physics engine and visualization assets are being compiled.
+         </div>
+
+         <div className="space-y-4">
+             <h2 className="text-3xl font-bold text-white tracking-tight">{title}</h2>
+             <p className="text-slate-400 text-lg">
+               This simulation module is currently in the <strong>Quantum Development Pipeline</strong>. 
+               Our physics engine requires calibration for this specific phenomenon.
              </p>
-             <div className="mt-8 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400 text-sm flex items-center gap-2">
-                <AlertCircle size={16} />
-                <span>Status: Unlocked / Construction</span>
+         </div>
+
+         <div className="grid grid-cols-2 gap-4">
+             <div className="p-4 bg-slate-900 rounded-xl border border-slate-700 text-left">
+                 <div className="text-xs text-slate-500 uppercase font-bold mb-1">Status</div>
+                 <div className="text-yellow-400 font-mono flex items-center gap-2"><Construction size={14}/> Engineering</div>
              </div>
-        </div>
+             <div className="p-4 bg-slate-900 rounded-xl border border-slate-700 text-left">
+                 <div className="text-xs text-slate-500 uppercase font-bold mb-1">ETA</div>
+                 <div className="text-blue-400 font-mono">Coming Soon</div>
+             </div>
+         </div>
+         
+         <div className="pt-4 border-t border-slate-700/50">
+             <p className="text-xs text-slate-600 font-mono">SYSTEM ID: DEV-MOD-404 // ASSETS COMPILING...</p>
+         </div>
       </div>
-
-      {/* COLUMN 3: DATA */}
-      <div className="lg:col-span-3 flex flex-col gap-4 opacity-50 pointer-events-none select-none">
-        <div className="bg-lab-card border border-slate-700 rounded-2xl p-4 flex-1 overflow-hidden flex flex-col">
-           <h3 className="font-bold text-slate-300 mb-4 flex items-center gap-2">
-             <Save size={16} /> Data Logger
-           </h3>
-           <div className="flex-1 bg-slate-800/50 rounded-xl"></div>
-        </div>
-      </div>
-
     </div>
   );
 };

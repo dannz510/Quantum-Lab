@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Settings, Play, Pause, RotateCcw, Sparkles, Loader2, X, Plus, Zap, Share2 } from 'lucide-react';
 import { analyzeExperimentData } from '../services/gemini';
 import { Language } from '../types';
+import { SoundEngine } from '../services/sound';
 
 // MOCK PHYSICS & AI SERVICES
 const calculateGravitationalWaveStrain = (time: number, bhs: BlackHole[], mergerTime: number, spinAlignment: number) => {
@@ -55,6 +56,9 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const plotCanvasRef = useRef<HTMLCanvasElement>(null);
   const reqRef = useRef<number>(0);
+  
+  // Audio Ref
+  const droneRef = useRef<any>(null);
 
   const mergerTime = 10; 
   
@@ -144,6 +148,15 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
 
     const currentStrain = calculateGravitationalWaveStrain(time, bhs, mergerTime, bhs.some(bh => bh.spinTilt > 0) ? 0.5 : 0);
     drawStrainPlot(currentStrain * 1e25);
+    
+    // UPDATE DRONE SOUND
+    if (isRunning && droneRef.current) {
+        // Estimate frequency based on time left
+        const timeLeft = Math.max(0.1, mergerTime - time);
+        const freq = 10 + (1 / timeLeft) * 20; // Increases as time -> merger
+        const normStrain = Math.abs(currentStrain * 1e20); 
+        droneRef.current.update(normStrain, freq);
+    }
 
     const cx = w/2;
     const cy = h/2;
@@ -238,10 +251,22 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
             ctx.fillText(`KICK: ${recoilVelocity} km/s`, cx + 80, cy - 80);
         }
     }
-  }, [time, bhs, mergerTime, recoilVelocity, drawStrainPlot]);
+  }, [time, bhs, mergerTime, recoilVelocity, drawStrainPlot, isRunning]);
 
   useEffect(() => {
-    if (!isRunning) return;
+    if (!isRunning) {
+        if (droneRef.current) {
+            droneRef.current.stop();
+            droneRef.current = null;
+        }
+        return;
+    }
+    
+    // Start sound if running
+    if (!droneRef.current) {
+        droneRef.current = SoundEngine.createGravitationalDrone();
+    }
+
     const animate = () => {
         setTime(t => t + 0.02);
         if (time > mergerTime + 5) setIsRunning(false);
@@ -252,12 +277,23 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
     return () => cancelAnimationFrame(reqRef.current);
   }, [isRunning, time, drawSimulation, mergerTime]);
   
+  // Cleanup on unmount
+  useEffect(() => {
+      return () => {
+          if (droneRef.current) droneRef.current.stop();
+      };
+  }, []);
+  
   const handleReset = () => {
       setIsRunning(false);
       setTime(0);
       setEventLog([]);
       setFinalBHMassLoss(0);
       setRecoilVelocity(0);
+      if (droneRef.current) {
+          droneRef.current.stop();
+          droneRef.current = null;
+      }
       setAiAnalysis('');
   };
   

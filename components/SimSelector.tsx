@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, Play, Lock, Film, Activity, Waves, Zap, Magnet, Orbit, Triangle, Droplets, Radio, MoveHorizontal, AlignCenter, Globe, SortAsc, Link2, Aperture, MonitorPlay } from 'lucide-react';
+import { ArrowLeft, Play, Lock, Film, Activity, Waves, Zap, Magnet, Orbit, Triangle, Droplets, Radio, MoveHorizontal, AlignCenter, Globe, SortAsc, Link2, Aperture, MonitorPlay, Sun, Thermometer, Atom, Layers, Eye, Battery } from 'lucide-react';
 import { AppMode, SimulationStats, Language } from '../types';
 
 interface SimSelectorProps {
@@ -8,308 +8,350 @@ interface SimSelectorProps {
   lang: Language;
 }
 
+// FULL LIBRARY
 const SIMULATIONS: SimulationStats[] = [
   // --- MECHANICS ---
   {
-    id: 'pendulum',
-    name: 'Simple Pendulum',
-    nameVi: 'Con Lắc Đơn',
-    category: 'Mechanics',
-    difficulty: 'Easy',
-    description: 'Explore harmonic motion, damping, and energy conservation. Includes large angle approximation.',
-    descriptionVi: 'Khám phá dao động điều hòa, tắt dần và bảo toàn năng lượng. Bao gồm công thức góc lớn.',
+    id: 'pendulum', name: 'Simple Pendulum', nameVi: 'Con Lắc Đơn',
+    category: 'Mechanics', difficulty: 'Easy',
+    description: 'Harmonic motion, damping, energy conservation.',
+    descriptionVi: 'Dao động điều hòa, tắt dần, bảo toàn năng lượng.',
     thumbnailColor: 'bg-teal-500'
   },
   {
-    id: 'inclined',
-    name: 'Inclined Plane',
-    nameVi: 'Mặt Phẳng Nghiêng',
-    category: 'Mechanics',
-    difficulty: 'Medium',
-    description: 'Analyze friction, forces, and motion on a ramp. Dynamic vector analysis included.',
-    descriptionVi: 'Phân tích ma sát, lực và chuyển động trên dốc. Bao gồm phân tích vector động.',
+    id: 'inclined', name: 'Inclined Plane', nameVi: 'Mặt Phẳng Nghiêng',
+    category: 'Mechanics', difficulty: 'Medium',
+    description: 'Friction, forces, vectors on a ramp.',
+    descriptionVi: 'Ma sát, lực, phân tích vector trên dốc.',
     thumbnailColor: 'bg-emerald-600'
   },
   {
-    id: 'fluids',
-    name: 'Archimedes Fluid Lab',
-    nameVi: 'Thủy Lực Archimedes',
-    category: 'Mechanics',
-    difficulty: 'Hard',
-    description: 'Explore buoyancy, fluid resistance, and displacement with dynamic liquid surfaces.',
-    descriptionVi: 'Khám phá lực đẩy Ác-si-mét, sức cản chất lỏng và sự dịch chuyển với bề mặt động.',
+    id: 'fluids', name: 'Archimedes Fluid', nameVi: 'Thủy Lực Archimedes',
+    category: 'Mechanics', difficulty: 'Hard',
+    description: 'Buoyancy, fluid density, displacement.',
+    descriptionVi: 'Lực đẩy Ác-si-mét, mật độ, sự dịch chuyển.',
     thumbnailColor: 'bg-cyan-600'
   },
   {
-    id: 'mould',
-    name: 'Chain Fountain (Mould)',
-    nameVi: 'Hiệu Ứng Mould',
-    category: 'Mechanics',
-    difficulty: 'Medium',
-    description: 'Simulate the counter-intuitive physics of a self-siphoning chain bead fountain.',
-    descriptionVi: 'Mô phỏng vật lý phản trực giác của chuỗi hạt tự phun trào.',
+    id: 'mould', name: 'Chain Fountain', nameVi: 'Hiệu Ứng Mould',
+    category: 'Mechanics', difficulty: 'Medium',
+    description: 'Self-siphoning beads dynamics.',
+    descriptionVi: 'Động lực học chuỗi hạt tự phun.',
     thumbnailColor: 'bg-pink-600'
   },
   {
-    id: 'orbits',
-    name: 'Gravitational Orbits',
-    nameVi: 'Quỹ Đạo Hấp Dẫn',
-    category: 'Forces',
-    difficulty: 'Hard',
-    description: 'Simulate multi-body orbits and gravitational force fields in a vacuum.',
-    descriptionVi: 'Mô phỏng quỹ đạo đa vật thể và trường lực hấp dẫn trong chân không.',
-    thumbnailColor: 'bg-slate-600'
+    id: 'projectile', name: 'Projectile Motion', nameVi: 'Chuyển Động Ném Xiên',
+    category: 'Mechanics', difficulty: 'Easy',
+    description: 'Cannonball trajectory, drag, gravity.',
+    descriptionVi: 'Quỹ đạo đạn pháo, sức cản, trọng lực.',
+    thumbnailColor: 'bg-orange-500'
   },
   {
-    id: 'blackhole',
-    name: 'Black Hole Merger',
-    nameVi: 'Hợp Nhất Hố Đen',
-    category: 'Forces',
-    difficulty: 'Hard',
-    description: 'Visualize spacetime ripples and gravitational waves from binary black hole mergers (LIGO).',
-    descriptionVi: 'Trực quan hóa sóng không-thời gian và sóng hấp dẫn từ sự hợp nhất hố đen đôi.',
-    thumbnailColor: 'bg-gray-800'
+    id: 'collisions', name: 'Collision Lab', nameVi: 'Va Chạm Đàn Hồi',
+    category: 'Mechanics', difficulty: 'Medium',
+    description: 'Elastic/Inelastic collisions in 1D/2D.',
+    descriptionVi: 'Va chạm đàn hồi/mềm trong 1D/2D.',
+    thumbnailColor: 'bg-red-500'
   },
   {
-    id: 'veo',
-    name: 'Veo Generative Lab',
-    nameVi: 'Phòng Lab Veo AI',
-    category: 'Mechanics',
-    difficulty: 'Hard',
-    description: 'Use generative video to simulate complex scenarios like collisions from images.',
-    descriptionVi: 'Sử dụng video tạo sinh để mô phỏng các tình huống phức tạp như va chạm từ ảnh.',
-    thumbnailColor: 'bg-blue-600'
+    id: 'springs', name: 'Hooke\'s Law', nameVi: 'Định Luật Hooke',
+    category: 'Mechanics', difficulty: 'Easy',
+    description: 'Spring force, potential energy, oscillation.',
+    descriptionVi: 'Lực đàn hồi, thế năng, dao động lò xo.',
+    thumbnailColor: 'bg-green-500'
   },
-
-  // --- ELECTRONICS ---
+  
+  // --- OPTICS (NEW & EXPANDED) ---
   {
-    id: 'circuit',
-    name: 'RLC Circuit Builder',
-    nameVi: 'Mạch RLC',
-    category: 'Electronics',
-    difficulty: 'Medium',
-    description: 'Design AC/DC circuits, analyze resonance, and visualize phase shifts.',
-    descriptionVi: 'Thiết kế mạch AC/DC, phân tích cộng hưởng và trực quan hóa độ lệch pha.',
-    thumbnailColor: 'bg-amber-600'
+    id: 'optics_prism', name: 'Prism & Refraction', nameVi: 'Lăng Kính & Khúc Xạ',
+    category: 'Optics', difficulty: 'Medium',
+    description: 'Light dispersion (rainbows), Snell\'s law.',
+    descriptionVi: 'Tán sắc ánh sáng (cầu vồng), định luật Snell.',
+    thumbnailColor: 'bg-indigo-500'
   },
   {
-    id: 'oscilloscope',
-    name: 'Virtual Oscilloscope',
-    nameVi: 'Dao Động Ký Ảo',
-    category: 'Electronics',
-    difficulty: 'Medium',
-    description: 'Visualize voltage waveforms, measure Vpp, Vrms, and frequency in real-time.',
-    descriptionVi: 'Hiển thị dạng sóng điện áp, đo Vpp, Vrms và tần số theo thời gian thực.',
-    thumbnailColor: 'bg-orange-600'
+    id: 'lenses', name: 'Geometric Optics', nameVi: 'Quang Hình Học',
+    category: 'Optics', difficulty: 'Medium',
+    description: 'Lenses, mirrors, focal points, image formation.',
+    descriptionVi: 'Thấu kính, gương, tiêu điểm, tạo ảnh.',
+    thumbnailColor: 'bg-blue-400'
   },
   {
-    id: 'induction',
-    name: 'Faraday\'s Law',
-    nameVi: 'Định luật Faraday',
-    category: 'Electronics',
-    difficulty: 'Hard',
-    description: 'Move magnets through coils to generate current. Visualize magnetic flux lines.',
-    descriptionVi: 'Di chuyển nam châm qua cuộn dây để tạo dòng điện. Hiển thị đường sức từ.',
-    thumbnailColor: 'bg-red-600'
-  },
-
-  // --- QUANTUM & OPTICS ---
-  {
-    id: 'slit',
-    name: 'Double Slit Exp.',
-    nameVi: 'Thí Nghiệm Khe Y-âng',
-    category: 'Quantum',
-    difficulty: 'Hard',
-    description: 'Observe wave-particle duality, interference patterns, and wavefunction collapse.',
-    descriptionVi: 'Quan sát lưỡng tính sóng-hạt, vân giao thoa và sự sụp đổ hàm sóng.',
-    thumbnailColor: 'bg-purple-600'
-  },
-  {
-    id: 'spectrum',
-    name: 'Atomic Spectrum',
-    nameVi: 'Phổ Nguyên Tử',
-    category: 'Quantum',
-    difficulty: 'Hard',
-    description: 'Analyze emission and absorption lines of elements using the Bohr model.',
-    descriptionVi: 'Phân tích các vạch phát xạ và hấp thụ của nguyên tố sử dụng mô hình Bohr.',
-    thumbnailColor: 'bg-violet-600'
-  },
-  {
-    id: 'tunneling',
-    name: 'Quantum Tunneling',
-    nameVi: 'Hiệu Ứng Đường Hầm',
-    category: 'Quantum',
-    difficulty: 'Hard',
-    description: 'Visualize probability waves crossing energy barriers.',
-    descriptionVi: 'Trực quan hóa sóng xác suất vượt qua rào cản năng lượng.',
-    thumbnailColor: 'bg-indigo-600'
+    id: 'color', name: 'Color Mixing', nameVi: 'Pha Trộn Màu',
+    category: 'Optics', difficulty: 'Easy',
+    description: 'RGB additive and CMYK subtractive mixing.',
+    descriptionVi: 'Pha màu cộng RGB và trừ CMYK.',
+    thumbnailColor: 'bg-fuchsia-500'
   },
 
   // --- WAVES ---
   {
-    id: 'ripple',
-    name: 'Ripple Tank 3D',
-    nameVi: 'Bể Sóng 3D',
-    category: 'Waves',
-    difficulty: 'Medium',
-    description: 'Simulate wave interference, diffraction, and reflection in a water tank.',
-    descriptionVi: 'Mô phỏng giao thoa, nhiễu xạ và phản xạ sóng trong bể nước.',
+    id: 'ripple', name: 'Ripple Tank 3D', nameVi: 'Bể Sóng 3D',
+    category: 'Waves', difficulty: 'Medium',
+    description: 'Interference, diffraction in water.',
+    descriptionVi: 'Giao thoa, nhiễu xạ sóng nước.',
     thumbnailColor: 'bg-sky-500'
   },
   {
-    id: 'doppler',
-    name: 'Doppler Effect',
-    nameVi: 'Hiệu Ứng Doppler',
-    category: 'Waves',
-    difficulty: 'Easy',
-    description: 'Observe frequency shifts from moving sound or light sources.',
-    descriptionVi: 'Quan sát sự thay đổi tần số từ nguồn âm hoặc ánh sáng chuyển động.',
+    id: 'doppler', name: 'Doppler Effect', nameVi: 'Hiệu Ứng Doppler',
+    category: 'Waves', difficulty: 'Easy',
+    description: 'Sound frequency shift source/observer.',
+    descriptionVi: 'Dịch chuyển tần số âm thanh nguồn/người xem.',
     thumbnailColor: 'bg-lime-600'
   },
   {
-    id: 'simplewave',
-    name: 'Simple Wave Sim',
-    nameVi: 'Mô Phỏng Sóng Cơ Bản',
-    category: 'Waves',
-    difficulty: 'Easy',
-    description: 'Visualize transverse and longitudinal waves with detailed particle motion.',
-    descriptionVi: 'Trực quan hóa sóng ngang và sóng dọc với chuyển động chi tiết của hạt.',
+    id: 'simplewave', name: 'Wave on a String', nameVi: 'Sóng Trên Dây',
+    category: 'Waves', difficulty: 'Easy',
+    description: 'Amplitude, frequency, tension effects.',
+    descriptionVi: 'Biên độ, tần số, lực căng dây.',
     thumbnailColor: 'bg-indigo-500'
+  },
+
+  // --- THERMODYNAMICS (NEW CATEGORY) ---
+  {
+    id: 'gas', name: 'Ideal Gas Law', nameVi: 'Khí Lý Tưởng',
+    category: 'Thermodynamics', difficulty: 'Medium',
+    description: 'PV=nRT, kinetic molecular theory.',
+    descriptionVi: 'PV=nRT, thuyết động học phân tử.',
+    thumbnailColor: 'bg-orange-600'
+  },
+  {
+    id: 'states', name: 'States of Matter', nameVi: 'Trạng Thái Vật Chất',
+    category: 'Thermodynamics', difficulty: 'Easy',
+    description: 'Solid, liquid, gas phase changes.',
+    descriptionVi: 'Chuyển pha rắn, lỏng, khí.',
+    thumbnailColor: 'bg-blue-300'
+  },
+  {
+    id: 'friction_heat', name: 'Friction & Heat', nameVi: 'Ma Sát & Nhiệt',
+    category: 'Thermodynamics', difficulty: 'Easy',
+    description: 'Mechanical energy to thermal energy.',
+    descriptionVi: 'Cơ năng chuyển thành nhiệt năng.',
+    thumbnailColor: 'bg-red-700'
+  },
+
+  // --- ELECTRONICS ---
+  {
+    id: 'circuit', name: 'RLC Circuit', nameVi: 'Mạch RLC',
+    category: 'Electronics', difficulty: 'Medium',
+    description: 'AC circuits, resonance, phase.',
+    descriptionVi: 'Mạch xoay chiều, cộng hưởng, pha.',
+    thumbnailColor: 'bg-amber-600'
+  },
+  {
+    id: 'oscilloscope', name: 'Oscilloscope', nameVi: 'Dao Động Ký',
+    category: 'Electronics', difficulty: 'Medium',
+    description: 'Visualize waveforms, voltage, frequency.',
+    descriptionVi: 'Hiển thị dạng sóng, điện áp, tần số.',
+    thumbnailColor: 'bg-orange-600'
+  },
+  {
+    id: 'induction', name: 'Faraday\'s Law', nameVi: 'Định luật Faraday',
+    category: 'Electronics', difficulty: 'Hard',
+    description: 'Magnetic flux, induced EMF.',
+    descriptionVi: 'Từ thông, suất điện động cảm ứng.',
+    thumbnailColor: 'bg-red-600'
+  },
+
+  // --- QUANTUM & MODERN ---
+  {
+    id: 'slit', name: 'Double Slit', nameVi: 'Khe Y-âng',
+    category: 'Quantum', difficulty: 'Hard',
+    description: 'Wave-particle duality, interference.',
+    descriptionVi: 'Lưỡng tính sóng-hạt, giao thoa.',
+    thumbnailColor: 'bg-purple-600'
+  },
+  {
+    id: 'spectrum', name: 'Atomic Spectrum', nameVi: 'Phổ Nguyên Tử',
+    category: 'Quantum', difficulty: 'Hard',
+    description: 'Bohr model, emission lines.',
+    descriptionVi: 'Mô hình Bohr, vạch phát xạ.',
+    thumbnailColor: 'bg-violet-600'
+  },
+  {
+    id: 'tunneling', name: 'Tunneling', nameVi: 'Hiệu Ứng Đường Hầm',
+    category: 'Quantum', difficulty: 'Hard',
+    description: 'Probability waves crossing barriers.',
+    descriptionVi: 'Sóng xác suất vượt rào cản.',
+    thumbnailColor: 'bg-indigo-600'
+  },
+  {
+    id: 'blackhole', name: 'Black Hole Merger', nameVi: 'Hợp Nhất Hố Đen',
+    category: 'Quantum', difficulty: 'Hard',
+    description: 'Gravitational waves, LIGO visualization.',
+    descriptionVi: 'Sóng hấp dẫn, mô phỏng LIGO.',
+    thumbnailColor: 'bg-gray-800'
+  },
+  {
+    id: 'rutherford', name: 'Rutherford Scattering', nameVi: 'Tán Xạ Rutherford',
+    category: 'Quantum', difficulty: 'Hard',
+    description: 'Atomic nucleus discovery.',
+    descriptionVi: 'Khám phá hạt nhân nguyên tử.',
+    thumbnailColor: 'bg-slate-500'
+  },
+  
+  // --- AI GENERATIVE ---
+  {
+    id: 'veo', name: 'Veo AI Lab', nameVi: 'Phòng Lab Veo AI',
+    category: 'Mechanics', difficulty: 'Hard',
+    description: 'Generative physics video from text.',
+    descriptionVi: 'Video vật lý tạo sinh từ văn bản.',
+    thumbnailColor: 'bg-blue-600'
   }
 ];
 
 export const SimSelector: React.FC<SimSelectorProps> = ({ setMode, lang }) => {
-  const [sortBy, setSortBy] = useState<'difficulty' | 'category' | 'name'>('difficulty');
-
-  const handleSelect = (id: string) => {
-    switch (id) {
-      case 'pendulum': setMode(AppMode.SIM_RUN_PENDULUM); break;
-      case 'veo': setMode(AppMode.SIM_RUN_VEO); break;
-      case 'circuit': setMode(AppMode.SIM_RUN_CIRCUIT); break;
-      case 'slit': setMode(AppMode.SIM_RUN_SLIT); break;
-      case 'inclined': setMode(AppMode.SIM_RUN_INCLINED); break;
-      case 'fluids': setMode(AppMode.SIM_RUN_FLUIDS); break;
-      case 'orbits': setMode(AppMode.SIM_RUN_ORBITS); break;
-      case 'oscilloscope': setMode(AppMode.SIM_RUN_OSCILLOSCOPE); break;
-      case 'induction': setMode(AppMode.SIM_RUN_INDUCTION); break;
-      case 'spectrum': setMode(AppMode.SIM_RUN_SPECTRUM); break;
-      case 'tunneling': setMode(AppMode.SIM_RUN_TUNNELING); break;
-      case 'ripple': setMode(AppMode.SIM_RUN_RIPPLE); break;
-      case 'doppler': setMode(AppMode.SIM_RUN_DOPPLER); break;
-      case 'mould': setMode(AppMode.SIM_RUN_MOULD); break;
-      case 'blackhole': setMode(AppMode.SIM_RUN_BLACKHOLE); break;
-      case 'simplewave': setMode(AppMode.SIM_RUN_SIMPLE_WAVE); break;
-      default: break;
-    }
-  };
-
-  const getIcon = (id: string) => {
-    switch(id) {
-        case 'pendulum': return Activity;
-        case 'veo': return Film;
-        case 'inclined': return Triangle;
-        case 'fluids': return Droplets;
-        case 'orbits': return Orbit;
-        case 'circuit': return Zap;
-        case 'oscilloscope': return Activity;
-        case 'induction': return Magnet;
-        case 'slit': return AlignCenter;
-        case 'spectrum': return Radio;
-        case 'tunneling': return MoveHorizontal;
-        case 'ripple': return Waves;
-        case 'doppler': return Radio;
-        case 'mould': return Link2;
-        case 'blackhole': return Aperture;
-        case 'simplewave': return MonitorPlay;
-        default: return Activity;
-    }
-  };
-
-  // Sorting Logic
-  const sortedSims = [...SIMULATIONS].sort((a, b) => {
-    if (sortBy === 'difficulty') {
-      const levels = { 'Easy': 1, 'Medium': 2, 'Hard': 3 };
-      return levels[a.difficulty] - levels[b.difficulty];
-    }
-    if (sortBy === 'category') {
-      return a.category.localeCompare(b.category);
-    }
-    return a.name.localeCompare(b.name);
-  });
+  const [activeTab, setActiveTab] = useState('All');
+  const [sortBy, setSortBy] = useState<'difficulty' | 'name'>('difficulty');
 
   const t = (en: string, vi: string) => lang === 'vi' ? vi : en;
 
+  const categories = [
+    { id: 'All', label: t('All Labs', 'Tất Cả'), icon: Layers },
+    { id: 'Mechanics', label: t('Mechanics', 'Cơ Học'), icon: Triangle },
+    { id: 'Waves', label: t('Waves', 'Sóng & Âm'), icon: Waves },
+    { id: 'Optics', label: t('Optics', 'Quang Học'), icon: Sun },
+    { id: 'Thermodynamics', label: t('Thermodynamics', 'Nhiệt Học'), icon: Thermometer },
+    { id: 'Electronics', label: t('Electronics', 'Điện Từ'), icon: Zap },
+    { id: 'Quantum', label: t('Quantum', 'Lượng Tử'), icon: Atom },
+  ];
+
+  const handleSelect = (sim: SimulationStats) => {
+    switch (sim.id) {
+      // Mechanics
+      case 'pendulum': setMode(AppMode.SIM_RUN_PENDULUM); break;
+      case 'inclined': setMode(AppMode.SIM_RUN_INCLINED); break;
+      case 'fluids': setMode(AppMode.SIM_RUN_FLUIDS); break;
+      case 'projectile': setMode(AppMode.SIM_RUN_PROJECTILE); break; // Updated
+      case 'collisions': setMode(AppMode.SIM_RUN_COLLISIONS); break; // Updated
+      case 'springs': setMode(AppMode.SIM_RUN_SPRINGS); break; // Updated
+      case 'mould': setMode(AppMode.SIM_RUN_MOULD); break;
+      case 'orbits': setMode(AppMode.SIM_RUN_ORBITS); break;
+      case 'veo': setMode(AppMode.SIM_RUN_VEO); break;
+
+      // Thermodynamics
+      case 'gas': setMode(AppMode.SIM_RUN_GAS); break; // Updated
+      case 'states': setMode(AppMode.SIM_RUN_STATES); break; // Updated
+      case 'friction_heat': setMode(AppMode.SIM_RUN_HEAT); break; // Updated
+
+      // Waves
+      case 'ripple': setMode(AppMode.SIM_RUN_RIPPLE); break;
+      case 'doppler': setMode(AppMode.SIM_RUN_DOPPLER); break;
+      case 'simplewave': setMode(AppMode.SIM_RUN_SIMPLE_WAVE); break;
+
+      // Electronics
+      case 'circuit': setMode(AppMode.SIM_RUN_CIRCUIT); break;
+      case 'oscilloscope': setMode(AppMode.SIM_RUN_OSCILLOSCOPE); break;
+      case 'induction': setMode(AppMode.SIM_RUN_INDUCTION); break;
+
+      // Quantum
+      case 'slit': setMode(AppMode.SIM_RUN_SLIT); break;
+      case 'spectrum': setMode(AppMode.SIM_RUN_SPECTRUM); break;
+      case 'tunneling': setMode(AppMode.SIM_RUN_TUNNELING); break;
+      case 'rutherford': setMode(AppMode.SIM_RUN_RUTHERFORD); break; // Updated
+      case 'blackhole': setMode(AppMode.SIM_RUN_BLACKHOLE); break;
+
+      // Optics
+      case 'optics_prism': setMode(AppMode.SIM_RUN_OPTICS); break;
+      case 'lenses': setMode(AppMode.SIM_RUN_LENSES); break; // Updated
+      case 'color': setMode(AppMode.SIM_RUN_COLOR); break; // Updated
+
+      default: setMode(AppMode.SIM_PLACEHOLDER); break;
+    }
+  };
+
+  const filteredSims = SIMULATIONS.filter(s => activeTab === 'All' || s.category === activeTab).sort((a, b) => {
+      if (sortBy === 'difficulty') {
+          const levels = { 'Easy': 1, 'Medium': 2, 'Hard': 3 };
+          return levels[a.difficulty] - levels[b.difficulty];
+      }
+      return a.name.localeCompare(b.name);
+  });
+
   return (
-    <div className="h-full overflow-y-auto p-6">
-      {/* Header & Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div className="flex items-center gap-4">
-          <button onClick={() => setMode(AppMode.DASHBOARD)} className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
-            <ArrowLeft className="text-slate-400" />
-          </button>
-          <h1 className="text-2xl font-bold text-white">{t('Simulation Library', 'Thư viện Mô phỏng')}</h1>
+    <div className="h-full flex flex-col bg-slate-900">
+      {/* Top Header */}
+      <div className="p-6 pb-2 flex flex-col gap-4 bg-slate-900/90 backdrop-blur z-10">
+        <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+                <button onClick={() => setMode(AppMode.DASHBOARD)} className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
+                    <ArrowLeft className="text-slate-400" />
+                </button>
+                <h1 className="text-2xl font-bold text-white tracking-tight">{t('Simulation Library', 'Thư Viện Mô Phỏng')}</h1>
+            </div>
+            <div className="flex items-center gap-2 bg-slate-800 rounded-lg p-1 border border-slate-700">
+                <SortAsc size={16} className="text-slate-400 ml-2" />
+                <select 
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="bg-transparent text-sm text-white font-medium p-1 outline-none cursor-pointer"
+                >
+                    <option value="difficulty">{t('Level', 'Độ khó')}</option>
+                    <option value="name">{t('Name', 'Tên')}</option>
+                </select>
+            </div>
         </div>
 
-        <div className="flex items-center gap-3">
-           {/* Sort Toggle */}
-           <div className="flex items-center gap-2 bg-slate-800 rounded-lg p-1 border border-slate-700">
-              <SortAsc size={16} className="text-slate-400 ml-2" />
-              <select 
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-transparent text-sm text-white font-medium p-1 outline-none cursor-pointer"
-              >
-                 <option value="difficulty">{t('Level', 'Độ khó')}</option>
-                 <option value="category">{t('Category', 'Danh mục')}</option>
-                 <option value="name">{t('Name', 'Tên')}</option>
-              </select>
-           </div>
+        {/* Tab Navigation */}
+        <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-2">
+            {categories.map(cat => {
+                const Icon = cat.icon;
+                return (
+                    <button 
+                        key={cat.id} 
+                        onClick={() => setActiveTab(cat.id)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${activeTab === cat.id ? 'bg-white text-slate-900 shadow-lg' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
+                    >
+                        <Icon size={16}/> {cat.label}
+                    </button>
+                )
+            })}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
-        {sortedSims.map((sim) => {
-          // Unlocking logic: ALL UNLOCKED
-          const isUnlocked = true;
-          const Icon = getIcon(sim.id);
-          const isNew = sim.id === 'mould' || sim.id === 'blackhole' || sim.id === 'simplewave';
-          
-          return (
-            <div 
-              key={sim.id}
-              onClick={() => isUnlocked && handleSelect(sim.id)}
-              className={`bg-lab-card border border-slate-700 rounded-2xl p-5 cursor-pointer group hover:border-lab-accent transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}
-            >
-              {/* Background Glow */}
-              <div className={`absolute top-0 right-0 w-32 h-32 ${sim.thumbnailColor} opacity-5 rounded-full blur-2xl -mr-10 -mt-10 group-hover:opacity-10 transition-opacity`}></div>
+      {/* Grid */}
+      <div className="flex-1 overflow-y-auto p-6 pt-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
+            {filteredSims.map((sim) => (
+                <div 
+                    key={sim.id}
+                    onClick={() => handleSelect(sim)}
+                    className={`bg-lab-card border border-slate-700 rounded-2xl p-5 cursor-pointer group hover:border-lab-accent transition-all duration-300 hover:-translate-y-1 relative overflow-hidden flex flex-col h-full`}
+                >
+                    <div className={`absolute top-0 right-0 w-32 h-32 ${sim.thumbnailColor} opacity-5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:opacity-15 transition-opacity`}></div>
+                    
+                    <div className="flex justify-between items-start mb-4 relative z-10">
+                        <div className={`p-3 rounded-xl ${sim.thumbnailColor} bg-opacity-20 text-white group-hover:scale-110 transition-transform duration-300`}>
+                            {sim.category === 'Mechanics' && <Triangle size={24}/>}
+                            {sim.category === 'Waves' && <Waves size={24}/>}
+                            {sim.category === 'Electronics' && <Zap size={24}/>}
+                            {sim.category === 'Quantum' && <Atom size={24}/>}
+                            {sim.category === 'Optics' && <Sun size={24}/>}
+                            {sim.category === 'Thermodynamics' && <Thermometer size={24}/>}
+                        </div>
+                        {sim.isPlaceholder ? (
+                            <span className="bg-slate-700 text-slate-400 text-[10px] font-bold px-2 py-1 rounded border border-slate-600">DEV</span>
+                        ) : (
+                            <span className={`text-[10px] font-bold px-2 py-1 rounded border border-slate-600 ${sim.difficulty === 'Hard' ? 'text-red-400 bg-red-900/20' : sim.difficulty === 'Medium' ? 'text-yellow-400 bg-yellow-900/20' : 'text-green-400 bg-green-900/20'}`}>
+                                {sim.difficulty}
+                            </span>
+                        )}
+                    </div>
 
-              <div className="flex justify-between items-start mb-4 relative z-10">
-                <div className={`p-3 rounded-xl ${sim.thumbnailColor} bg-opacity-20 text-white group-hover:scale-110 transition-transform duration-300`}>
-                  <Icon size={24} />
+                    <h3 className="font-bold text-white text-lg mb-1 group-hover:text-lab-accent transition-colors leading-tight">
+                        {lang === 'vi' ? (sim.nameVi || sim.name) : sim.name}
+                    </h3>
+                    <p className="text-sm text-slate-400 line-clamp-2 mb-4 flex-1">
+                        {lang === 'vi' ? (sim.descriptionVi || sim.description) : sim.description}
+                    </p>
+
+                    <div className="flex items-center text-xs font-medium text-slate-500 group-hover:text-white transition-colors mt-auto">
+                        {sim.isPlaceholder ? <Lock size={12} className="mr-1"/> : <Play size={12} className="mr-1 fill-current" />}
+                        {sim.isPlaceholder ? t('In Development', 'Đang Phát Triển') : t('Run Simulation', 'Chạy Mô Phỏng')}
+                    </div>
                 </div>
-                {isNew ? (
-                  <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full animate-pulse shadow-lg shadow-red-500/20">NEW</span>
-                ) : (
-                  <div className={`text-[10px] font-bold px-2 py-1 rounded-full border border-slate-600 text-slate-400`}>
-                    {sim.difficulty}
-                  </div>
-                )}
-              </div>
-
-              <h3 className="font-bold text-white text-lg mb-1 group-hover:text-lab-accent transition-colors">
-                {lang === 'vi' ? (sim.nameVi || sim.name) : sim.name}
-              </h3>
-              <p className="text-sm text-slate-400 line-clamp-2 mb-4 h-10">
-                {lang === 'vi' ? (sim.descriptionVi || sim.description) : sim.description}
-              </p>
-
-              <div className="flex items-center text-xs font-medium text-slate-500 group-hover:text-white transition-colors">
-                <Play size={12} className="mr-1 fill-current" />
-                {t('Run Simulation', 'Chạy Mô Phỏng')}
-              </div>
-            </div>
-          );
-        })}
+            ))}
+        </div>
       </div>
     </div>
   );
