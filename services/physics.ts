@@ -58,6 +58,22 @@ export const calculateEnergy = (mass: number, length: number, theta: number, ome
   return { pe, ke, total: pe + ke };
 };
 
+export const calculatePendulumForces = (mass: number, length: number, theta: number, omega: number, gravity: number = G_EARTH) => {
+  // Tangential Force (Restoring force) = -mg sin(theta)
+  const Ft = -mass * gravity * Math.sin(theta);
+  
+  // Centripetal Force = m * v^2 / r = m * (omega*L)^2 / L = m * omega^2 * L
+  const Fc = mass * Math.pow(omega, 2) * length;
+  
+  // Radial component of gravity = mg cos(theta)
+  const Fg_radial = mass * gravity * Math.cos(theta);
+  
+  // Tension = Centripetal Force + Radial component of gravity
+  const Tension = Fc + Fg_radial;
+
+  return { Ft, Tension, Fg: mass * gravity };
+};
+
 // --- Inclined Plane Physics ---
 export const calculateInclinedForces = (mass: number, angleDeg: number, mu: number, g: number = G_EARTH) => {
   const angleRad = angleDeg * (Math.PI / 180);

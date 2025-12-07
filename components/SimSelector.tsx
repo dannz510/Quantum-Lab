@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, Play, Lock, Film, Activity, Waves, Zap, Magnet, Orbit, Triangle, Droplets, Radio, MoveHorizontal, AlignCenter, Globe, SortAsc, Link2, Aperture } from 'lucide-react';
+import { ArrowLeft, Play, Lock, Film, Activity, Waves, Zap, Magnet, Orbit, Triangle, Droplets, Radio, MoveHorizontal, AlignCenter, Globe, SortAsc, Link2, Aperture, MonitorPlay } from 'lucide-react';
 import { AppMode, SimulationStats, Language } from '../types';
 
 interface SimSelectorProps {
@@ -165,6 +165,16 @@ const SIMULATIONS: SimulationStats[] = [
     description: 'Observe frequency shifts from moving sound or light sources.',
     descriptionVi: 'Quan sát sự thay đổi tần số từ nguồn âm hoặc ánh sáng chuyển động.',
     thumbnailColor: 'bg-lime-600'
+  },
+  {
+    id: 'simplewave',
+    name: 'Simple Wave Sim',
+    nameVi: 'Mô Phỏng Sóng Cơ Bản',
+    category: 'Waves',
+    difficulty: 'Easy',
+    description: 'Visualize transverse and longitudinal waves with detailed particle motion.',
+    descriptionVi: 'Trực quan hóa sóng ngang và sóng dọc với chuyển động chi tiết của hạt.',
+    thumbnailColor: 'bg-indigo-500'
   }
 ];
 
@@ -188,6 +198,7 @@ export const SimSelector: React.FC<SimSelectorProps> = ({ setMode, lang }) => {
       case 'doppler': setMode(AppMode.SIM_RUN_DOPPLER); break;
       case 'mould': setMode(AppMode.SIM_RUN_MOULD); break;
       case 'blackhole': setMode(AppMode.SIM_RUN_BLACKHOLE); break;
+      case 'simplewave': setMode(AppMode.SIM_RUN_SIMPLE_WAVE); break;
       default: break;
     }
   };
@@ -209,6 +220,7 @@ export const SimSelector: React.FC<SimSelectorProps> = ({ setMode, lang }) => {
         case 'doppler': return Radio;
         case 'mould': return Link2;
         case 'blackhole': return Aperture;
+        case 'simplewave': return MonitorPlay;
         default: return Activity;
     }
   };
@@ -260,50 +272,40 @@ export const SimSelector: React.FC<SimSelectorProps> = ({ setMode, lang }) => {
           // Unlocking logic: ALL UNLOCKED
           const isUnlocked = true;
           const Icon = getIcon(sim.id);
-          const isNew = sim.id === 'mould' || sim.id === 'blackhole';
+          const isNew = sim.id === 'mould' || sim.id === 'blackhole' || sim.id === 'simplewave';
           
           return (
             <div 
               key={sim.id}
               onClick={() => isUnlocked && handleSelect(sim.id)}
-              className={`bg-lab-card border border-slate-700/50 rounded-2xl overflow-hidden group hover:border-slate-500 transition-all cursor-pointer relative flex flex-col h-full hover:shadow-2xl hover:shadow-blue-900/10 hover:-translate-y-1 duration-300 ${!isUnlocked ? 'opacity-60 cursor-not-allowed' : ''}`}
+              className={`bg-lab-card border border-slate-700 rounded-2xl p-5 cursor-pointer group hover:border-lab-accent transition-all duration-300 hover:-translate-y-1 relative overflow-hidden`}
             >
-              <div className={`h-32 ${sim.thumbnailColor} bg-opacity-20 relative flex items-center justify-center overflow-hidden shrink-0`}>
-                 <div className={`absolute inset-0 ${sim.thumbnailColor} opacity-10 group-hover:opacity-20 transition-opacity`}></div>
-                 <Icon size={48} className={`${sim.thumbnailColor.replace('bg-', 'text-')} opacity-80 group-hover:scale-110 transition-transform duration-500`} />
-                 {!isUnlocked && (
-                   <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[2px]">
-                      <span className="flex items-center gap-2 text-slate-300 font-bold uppercase text-xs tracking-wider border border-slate-500 px-3 py-1 rounded-full bg-black/40"><Lock size={12} /> {t('Locked', 'Đã khóa')}</span>
-                   </div>
-                 )}
-                 {isNew && (
-                    <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg animate-pulse z-10">NEW</div>
-                 )}
+              {/* Background Glow */}
+              <div className={`absolute top-0 right-0 w-32 h-32 ${sim.thumbnailColor} opacity-5 rounded-full blur-2xl -mr-10 -mt-10 group-hover:opacity-10 transition-opacity`}></div>
+
+              <div className="flex justify-between items-start mb-4 relative z-10">
+                <div className={`p-3 rounded-xl ${sim.thumbnailColor} bg-opacity-20 text-white group-hover:scale-110 transition-transform duration-300`}>
+                  <Icon size={24} />
+                </div>
+                {isNew ? (
+                  <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full animate-pulse shadow-lg shadow-red-500/20">NEW</span>
+                ) : (
+                  <div className={`text-[10px] font-bold px-2 py-1 rounded-full border border-slate-600 text-slate-400`}>
+                    {sim.difficulty}
+                  </div>
+                )}
               </div>
-              
-              <div className="p-5 flex flex-col flex-1">
-                 <div className="flex justify-between items-start mb-2">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{sim.category}</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      sim.difficulty === 'Easy' ? 'bg-green-500/20 text-green-400' : 
-                      sim.difficulty === 'Medium' ? 'bg-amber-500/20 text-amber-400' : 
-                      'bg-red-500/20 text-red-400'
-                    }`}>
-                      {sim.difficulty === 'Easy' ? t('Easy', 'Dễ') : sim.difficulty === 'Medium' ? t('Medium', 'Trung bình') : t('Hard', 'Khó')}
-                    </span>
-                 </div>
-                 <h3 className="text-lg font-bold text-white mb-2 leading-tight">
-                   {lang === 'vi' && sim.nameVi ? sim.nameVi : sim.name}
-                 </h3>
-                 <p className="text-slate-400 text-sm mb-4 line-clamp-3 flex-1">
-                   {lang === 'vi' && sim.descriptionVi ? sim.descriptionVi : sim.description}
-                 </p>
-                 
-                 {isUnlocked && (
-                   <button className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2 mt-auto group-hover:bg-blue-600">
-                      <Play size={12} /> {t('Launch Lab', 'Chạy Lab')}
-                   </button>
-                 )}
+
+              <h3 className="font-bold text-white text-lg mb-1 group-hover:text-lab-accent transition-colors">
+                {lang === 'vi' ? (sim.nameVi || sim.name) : sim.name}
+              </h3>
+              <p className="text-sm text-slate-400 line-clamp-2 mb-4 h-10">
+                {lang === 'vi' ? (sim.descriptionVi || sim.description) : sim.description}
+              </p>
+
+              <div className="flex items-center text-xs font-medium text-slate-500 group-hover:text-white transition-colors">
+                <Play size={12} className="mr-1 fill-current" />
+                {t('Run Simulation', 'Chạy Mô Phỏng')}
               </div>
             </div>
           );

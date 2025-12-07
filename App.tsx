@@ -14,6 +14,7 @@ import { QuantumLab } from './components/QuantumLab';
 import { WaveLab } from './components/WaveLab';
 import { MouldLab } from './components/MouldLab';
 import { BlackHoleLab } from './components/BlackHoleLab';
+import { SimpleWaveLab } from './components/SimpleWaveLab';
 import { AppMode, Language } from './types';
 
 function App() {
@@ -58,6 +59,7 @@ function App() {
       case AppMode.SIM_RUN_DOPPLER: return t("Doppler Effect", "Hiệu Ứng Doppler");
       case AppMode.SIM_RUN_MOULD: return t("Chain Fountain (Mould)", "Hiệu Ứng Mould");
       case AppMode.SIM_RUN_BLACKHOLE: return t("Black Hole Merger", "Hợp Nhất Hố Đen");
+      case AppMode.SIM_RUN_SIMPLE_WAVE: return t("Simple Wave Simulation", "Mô Phỏng Sóng Cơ Bản");
       case AppMode.CHAT_TUTOR: return t("AI Physics Tutor", "Gia Sư Vật Lý AI");
       case AppMode.DEEP_THINK: return t("Deep Reasoning Engine", "Động Cơ Suy Luận Sâu");
       case AppMode.SEARCH_GROUND: return t("Live Research Terminal", "Thiết Bị Nghiên Cứu Trực Tuyến");
@@ -157,6 +159,7 @@ function App() {
           {/* New Modern Labs */}
           {mode === AppMode.SIM_RUN_MOULD && <MouldLab lang={lang} />}
           {mode === AppMode.SIM_RUN_BLACKHOLE && <BlackHoleLab lang={lang} />}
+          {mode === AppMode.SIM_RUN_SIMPLE_WAVE && <SimpleWaveLab />}
 
           {/* AI Tools */}
           {mode === AppMode.CHAT_TUTOR && <ChatTutor />}

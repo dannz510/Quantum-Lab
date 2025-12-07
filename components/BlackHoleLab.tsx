@@ -1,75 +1,139 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Play, Pause, RotateCcw, Sparkles, Loader2, X, Aperture, Download, Activity } from 'lucide-react';
-import { calculateGravitationalWaveStrain } from '../services/physics';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Settings, Play, Pause, RotateCcw, Sparkles, Loader2, X, Download, Plus, Minus, Zap, Share2 } from 'lucide-react';
 import { analyzeExperimentData } from '../services/gemini';
 import { Language } from '../types';
+
+// MOCK PHYSICS & AI SERVICES
+const calculateGravitationalWaveStrain = (time: number, bhs: BlackHole[], mergerTime: number, spinAlignment: number) => {
+    if (bhs.length < 2) return 0;
+    const timeToCoalescence = mergerTime - time;
+    if (timeToCoalescence <= 0) return 0.2 + (0.5 * Math.sin(time * 50)) * Math.exp(-(time - mergerTime) * 10); // Ringdown
+
+    const timeFactor = timeToCoalescence > 0 ? timeToCoalescence : 0.001; 
+    const frequency = 5 + (mergerTime - timeFactor) * 20; 
+    const amplitude = 0.0000001 / timeFactor; 
+    const spinBoost = 1 + bhs[0].spin * 0.4 * (1 + spinAlignment * 0.5); // Spin/Alignment effect
+    const strain = Math.sin(time * frequency * spinBoost) * amplitude * spinBoost * 1e-19; 
+    return strain;
+};
+
+interface BlackHole {
+  id: number;
+  mass: number;
+  spin: number; 
+  spinTilt: number; // Góc Spin (Tilt Angle) - Nâng cấp
+  color: string;
+  initialAngle: number;
+}
+
+interface Event {
+    time: number;
+    description: string;
+}
+
+const initialBlackHoles: BlackHole[] = [
+    { id: 1, mass: 2.0, spin: 0.8, spinTilt: 0, color: '#f59e0b', initialAngle: 0 },
+    { id: 2, mass: 1.0, spin: 0.0, spinTilt: 0, color: '#06b6d4', initialAngle: Math.PI },
+];
 
 interface BlackHoleLabProps {
   lang: Language;
 }
 
-interface Particle {
-  x: number;
-  y: number;
-  angle: number;
-  dist: number;
-  speed: number;
-  color: string;
-}
-
 export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
-  const t = (en: string, vi: string) => lang === 'vi' ? vi : en;
-
+  // State for controls
   const [isRunning, setIsRunning] = useState(false);
-  const [massRatio, setMassRatio] = useState(1);
-  const [spin, setSpin] = useState(0); // -1 to 1
-  const [distance, setDistance] = useState(100); // initial distance
+  const [bhs, setBhs] = useState<BlackHole[]>(initialBlackHoles);
   const [time, setTime] = useState(0);
-  
+  const [eventLog, setEventLog] = useState<Event[]>([]);
+  const [finalBHMassLoss, setFinalBHMassLoss] = useState(0);
+  const [recoilVelocity, setRecoilVelocity] = useState(0); // Vận tốc giật lùi (Kick)
   const [aiAnalysis, setAiAnalysis] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   
-  // Data for export/plotting
-  const [strainHistory, setStrainHistory] = useState<{t: number, h: number}[]>([]);
-
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const plotRef = useRef<HTMLCanvasElement>(null);
+  const plotCanvasRef = useRef<HTMLCanvasElement>(null);
   const reqRef = useRef<number>(0);
-  const particlesRef = useRef<Particle[]>([]);
 
-  const mergerTime = 10; // base seconds to merger
-
-  // Initialize Particles
+  const mergerTime = 10; 
+  
+  // --- LOGIC: Cập nhật Nhật ký Sự kiện ---
   useEffect(() => {
-    const parts: Particle[] = [];
-    for(let i=0; i<300; i++) {
-       const isHot = Math.random() > 0.7;
-       parts.push({
-         x: 0, y: 0,
-         angle: Math.random() * Math.PI * 2,
-         dist: 30 + Math.random() * 50,
-         speed: 0.05 + Math.random() * 0.1,
-         color: isHot ? '#ffffff' : (Math.random() > 0.5 ? '#f59e0b' : '#ea580c')
-       });
+    if (time > mergerTime - 2 && time < mergerTime - 1.95 && bhs.length >= 2) {
+        const desc = "Quỹ đạo xoắn ốc tăng tốc (Phát hiện tín hiệu Chirp).";
+        if (!eventLog.some(e => e.description === desc)) setEventLog(prev => [...prev, { time: time, description: desc }]);
     }
-    particlesRef.current = parts;
+    if (time > mergerTime && time < mergerTime + 0.05 && bhs.length >= 2) {
+        const totalMass = bhs.reduce((sum, bh) => sum + bh.mass, 0);
+        const massLoss = (totalMass - (totalMass * 0.95)) / totalMass;
+        const kickV = bhs.some(bh => bh.spinTilt > 0) ? 500 : 0; // Simplified kick logic
+        
+        setFinalBHMassLoss(massLoss);
+        setRecoilVelocity(kickV);
+        
+        const desc = `Hợp nhất hoàn tất. Hố đen cuối: M=${(totalMass * (1 - massLoss)).toFixed(2)}. Mất khối lượng: ${(massLoss * 100).toFixed(2)}%`;
+        if (!eventLog.some(e => e.description.includes("Hợp nhất hoàn tất"))) setEventLog(prev => [...prev, { time: time, description: desc }]);
+    }
+  }, [time, bhs, mergerTime, eventLog]);
+
+  // --- LOGIC: Vẽ Biểu đồ Strain (GW Spectrum) ---
+  const drawStrainPlot = useCallback((currentStrain: number) => {
+    const canvas = plotCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // Shift left
+    const imageData = ctx.getImageData(1, 0, w - 1, h);
+    ctx.putImageData(imageData, 0, 0);
+    ctx.fillStyle = '#0f172a'; 
+    ctx.fillRect(w - 1, 0, 1, h);
+
+    // Draw center line
+    ctx.strokeStyle = '#334155'; 
+    ctx.beginPath();
+    ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); 
+    ctx.stroke();
+
+    const maxStrainVisual = 0.3; 
+    const normalizedStrain = (currentStrain / maxStrainVisual);
+    const y = h / 2 - (normalizedStrain * h / 2); 
+
+    ctx.fillStyle = '#f59e0b'; 
+    ctx.fillRect(w - 1, y, 1, 1);
   }, []);
+  
+  // Hàm vẽ Accretion Disk & Event Horizon
+  const drawAccretionDisk = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number, spin: number, tilt: number, color: string) => {
+    ctx.fillStyle = color;
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = color;
+    
+    // Draw Disk (Ellipse based on tilt)
+    ctx.globalAlpha = 0.4 + spin * 0.4;
+    ctx.beginPath();
+    // Simplified ellipse tilt visualization
+    const tiltFactor = 1 - Math.abs(tilt / 90) * 0.3;
+    ctx.ellipse(x, y, size * 2.5, size * 2.5 * tiltFactor, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw Event Horizon (Black Shadow)
+    ctx.globalAlpha = 1.0;
+    ctx.shadowBlur = 5;
+    ctx.shadowColor = 'white';
+    ctx.fillStyle = 'black';
+    ctx.beginPath();
+    ctx.ellipse(x, y, size, size * (1 - spin / 3), 0, 0, Math.PI * 2);
+    ctx.fill(); 
+    
+    ctx.shadowBlur = 0;
+  }
 
-  useEffect(() => {
-    const animate = () => {
-      if (isRunning) {
-         setTime(t => t + 0.02);
-      }
-      drawScene();
-      drawPlot();
-      reqRef.current = requestAnimationFrame(animate);
-    };
-    reqRef.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(reqRef.current);
-  }, [isRunning, time, massRatio, spin]);
-
-  const drawScene = () => {
+  // --- LOGIC: Vẽ Mô phỏng Chính (Simulation Draw) ---
+  const drawSimulation = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -77,214 +141,236 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
     const w = canvas.width;
     const h = canvas.height;
     
-    // Clear with trail effect
     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
     ctx.fillRect(0, 0, w, h);
 
-    // Calculate current physics state
-    const strain = calculateGravitationalWaveStrain(time, 100, mergerTime, spin);
-    const ripple = strain * 5000;
-    
-    // Update history only when running
-    if (isRunning) {
-        setStrainHistory(prev => [...prev, { t: time, h: strain }].slice(-200)); // Keep last 200 points for plot
-    }
-
-    // Spacetime Grid
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for(let x = 0; x < w; x+=40) {
-      for(let y=0; y<h; y+=10) {
-         const dX = x - w/2;
-         const dY = y - h/2;
-         const dist = Math.sqrt(dX*dX + dY*dY);
-         // Relativistic warping
-         const wave = Math.sin(dist * 0.1 - time * 10) * ripple * Math.exp(-dist/300);
-         const offsetY = wave;
-         
-         if (y===0) ctx.moveTo(x, y + offsetY);
-         else ctx.lineTo(x, y + offsetY);
-      }
-    }
-    ctx.stroke();
-    
-    const effectiveMergerTime = mergerTime * (1 + spin * 0.2);
-    const timeLeft = Math.max(0, effectiveMergerTime - time);
-    const currentDist = (timeLeft / effectiveMergerTime) * 200; 
-    const angle = time * (20 / (timeLeft + 1)); 
+    const currentStrain = calculateGravitationalWaveStrain(time, bhs, mergerTime, bhs.some(bh => bh.spinTilt > 0) ? 0.5 : 0);
+    drawStrainPlot(currentStrain * 1e25);
 
     const cx = w/2;
     const cy = h/2;
 
-    if (timeLeft > 0.05) {
-       // Binary System
-       const x1 = cx + Math.cos(angle) * currentDist * 0.5;
-       const y1 = cy + Math.sin(angle) * currentDist * 0.5;
-       const x2 = cx - Math.cos(angle) * currentDist * 0.5;
-       const y2 = cy - Math.sin(angle) * currentDist * 0.5;
+    // Calculate BH Positions
+    const timeLeft = Math.max(0, mergerTime - time);
+    const orbitRadius = timeLeft > 0.1 ? (timeLeft / mergerTime) * 100 : 0; 
+    const angle = time * (10 / (timeLeft + 1)); 
 
-       // Particles
-       particlesRef.current.forEach(p => {
-          p.angle += p.speed * (1 + spin*0.5); // Spin affects accretion speed
-          const px = x1 + Math.cos(p.angle) * (p.dist * massRatio * 0.6);
-          const py = y1 + Math.sin(p.angle) * (p.dist * massRatio * 0.6);
-          ctx.fillStyle = p.color;
-          ctx.beginPath(); ctx.arc(px, py, 1.5, 0, Math.PI*2); ctx.fill();
-       });
+    const bhPositions = bhs.map((bh, index) => {
+        let x, y;
+        let massFraction = bh.mass / bhs.reduce((sum, b) => sum + b.mass, 0);
+        let currentDist = orbitRadius * (1 - massFraction); 
+        
+        // Simplified Multi-Body Logic
+        if (bhs.length === 2) {
+            x = cx + Math.cos(angle + bh.initialAngle) * (bh === bhs[0] ? currentDist : -currentDist);
+            y = cy + Math.sin(angle + bh.initialAngle) * (bh === bhs[0] ? currentDist : -currentDist);
+        } else if (index < 2) {
+             x = cx + Math.cos(angle + bh.initialAngle) * (bh === bhs[0] ? currentDist : -currentDist);
+             y = cy + Math.sin(angle + bh.initialAngle) * (bh === bhs[0] ? currentDist : -currentDist);
+        } else {
+             const thirdBodyDist = 150 * (1 - time / (mergerTime + 5));
+             x = cx + Math.cos(time * 0.5 + bh.initialAngle) * thirdBodyDist;
+             y = cy + Math.sin(time * 0.5 + bh.initialAngle) * thirdBodyDist;
+        }
 
-       // Horizons
-       ctx.shadowBlur = 20;
-       ctx.fillStyle = 'black';
-       
-       ctx.shadowColor = '#f59e0b';
-       ctx.strokeStyle = '#f59e0b';
-       ctx.beginPath(); ctx.arc(x1, y1, 20 * massRatio, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-       
-       ctx.shadowColor = '#06b6d4';
-       ctx.strokeStyle = '#06b6d4';
-       ctx.beginPath(); ctx.arc(x2, y2, 20, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-       ctx.shadowBlur = 0;
+        return { x, y, size: bh.mass * 10, spin: bh.spin, tilt: bh.spinTilt, color: bh.color };
+    });
 
-    } else {
-       // Merged
-       ctx.fillStyle = 'black';
-       ctx.strokeStyle = '#ef4444'; 
-       ctx.shadowBlur = 50 + Math.sin(time*20)*20; 
-       ctx.shadowColor = '#ef4444';
-       ctx.beginPath(); ctx.arc(cx, cy, 40, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-       ctx.shadowBlur = 0;
-       
-       // Ringdown shockwaves
-       const expansion = (time - effectiveMergerTime) * 200;
-       if (expansion > 0) {
-           ctx.lineWidth = 3;
-           ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(0, 1 - (time - effectiveMergerTime))})`;
-           ctx.beginPath(); ctx.arc(cx, cy, 40 + expansion, 0, Math.PI*2); ctx.stroke();
-       }
+    // Draw Dynamic Grid (GR Lensing/Wave Ripple)
+    const ripple = currentStrain * 5000; 
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1;
+    
+    const drawGridLine = (start: {x: number, y: number}, end: {x: number, y: number}) => {
+        ctx.beginPath();
+        
+        for(let t=0; t<=1; t+=0.05) {
+            const x = start.x + (end.x - start.x) * t;
+            const y = start.y + (end.y - start.y) * t;
+            
+            let lensingX = 0;
+            let lensingY = 0;
+            
+            bhPositions.forEach(pos => {
+                const dx = x - pos.x;
+                const dy = y - pos.y;
+                const r = Math.sqrt(dx*dx + dy*dy);
+                const warpFactor = (pos.size * 5) / (r * r + 1); 
+                lensingX += dx * warpFactor;
+                lensingY += dy * warpFactor;
+            });
 
-       ctx.fillStyle = 'white';
-       ctx.font = 'bold 20px Inter';
-       ctx.textAlign = 'center';
-       ctx.fillText("MERGER COMPLETE", cx, cy + 80);
-       
-       // Final Parameters
-       ctx.font = '12px Inter';
-       ctx.fillStyle = '#94a3b8';
-       const finalSpin = 0.6 + spin * 0.1; // Toy model approximation
-       ctx.fillText(`Final Mass: ${(1 + massRatio * 0.95).toFixed(2)} M☉`, cx, cy + 100);
-       ctx.fillText(`Final Spin: ${finalSpin.toFixed(2)}`, cx, cy + 115);
+            // Wave ripple effect
+            const distToCenter = Math.sqrt((x-cx)**2 + (y-cy)**2);
+            const waveEffectY = Math.sin(distToCenter * 0.1 - time * 10) * ripple * Math.exp(-distToCenter/300);
+            
+            const finalX = x + lensingX;
+            const finalY = y + waveEffectY + lensingY;
+
+            if (t === 0) ctx.moveTo(finalX, finalY);
+            else ctx.lineTo(finalX, finalY);
+        }
+        ctx.stroke();
     }
+    
+    const gridStep = 50;
+    for(let i=0; i<w; i+=gridStep) drawGridLine({x: i, y: 0}, {x: i, y: h});
+    for(let j=0; j<h; j+=gridStep) drawGridLine({x: 0, y: j}, {x: w, y: j});
+
+    // Draw Black Holes and Disks
+    if (timeLeft > 0.05) {
+        bhPositions.forEach(pos => {
+            drawAccretionDisk(ctx, pos.x, pos.y, pos.size, pos.spin, pos.tilt, pos.color);
+        });
+    } else {
+        // Merger Complete
+        const finalMassSize = 40; 
+        ctx.fillStyle = 'black';
+        ctx.strokeStyle = '#ef4444'; 
+        ctx.shadowBlur = 50 + Math.sin(time*20)*20; 
+        ctx.shadowColor = '#ef4444';
+        ctx.beginPath(); ctx.arc(cx, cy, finalMassSize, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.shadowBlur = 0;
+        
+        // Ringdown Shockwave & Recoil
+        const ringdownWaveRadius = finalMassSize + (time-mergerTime)*200;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(0, 1 - (time - mergerTime))})`;
+        ctx.beginPath();
+        ctx.arc(cx, cy, ringdownWaveRadius, 0, Math.PI*2);
+        ctx.stroke();
+        
+        // Recoil Visualization (Kick)
+        if (recoilVelocity > 0) {
+            ctx.fillStyle = 'yellow';
+            ctx.font = 'bold 16px Inter';
+            ctx.textAlign = 'center';
+            ctx.fillText(`KICK: ${recoilVelocity} km/s`, cx + 80, cy - 80);
+        }
+    }
+  }, [time, bhs, mergerTime, recoilVelocity, drawStrainPlot]);
+
+  // Animation Loop
+  useEffect(() => {
+    if (!isRunning) return;
+
+    const animate = () => {
+        setTime(t => t + 0.02);
+        if (time > mergerTime + 5) setIsRunning(false);
+        drawSimulation();
+        reqRef.current = requestAnimationFrame(animate);
+    };
+
+    reqRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(reqRef.current);
+  }, [isRunning, time, drawSimulation, mergerTime]);
+  
+  // UI Handlers
+  const handleReset = () => {
+      setIsRunning(false);
+      setTime(0);
+      setEventLog([]);
+      setFinalBHMassLoss(0);
+      setRecoilVelocity(0);
+      setAiAnalysis('');
+  };
+  
+  const handleUpdateBH = (id: number, field: string, value: number) => {
+      setBhs(prev => prev.map(bh => 
+          bh.id === id ? { ...bh, [field]: value } : bh
+      ));
+  };
+  
+  const handleAddBH = () => {
+      if (bhs.length >= 3) return;
+      const newId = Math.max(...bhs.map(b => b.id), 0) + 1;
+      setBhs(prev => [...prev, { 
+          id: newId, 
+          mass: 0.5, 
+          spin: 0.1, 
+          spinTilt: 0,
+          color: '#f97316', 
+          initialAngle: Math.random() * Math.PI * 2 
+      }]);
   };
 
-  const drawPlot = () => {
-      const canvas = plotRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      
-      const w = canvas.width;
-      const h = canvas.height;
-
-      ctx.clearRect(0, 0, w, h);
-      
-      // Grid
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 0.5;
-      ctx.beginPath();
-      ctx.moveTo(0, h/2); ctx.lineTo(w, h/2);
-      ctx.stroke();
-
-      if (strainHistory.length < 2) return;
-
-      // Plot Line
-      ctx.strokeStyle = '#f97316';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      
-      const maxPoints = 200;
-      const step = w / maxPoints;
-
-      strainHistory.forEach((pt, i) => {
-          const x = i * step;
-          // Scale strain for visibility
-          const y = h/2 - (pt.h * h * 4); 
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-      });
-      ctx.stroke();
-  };
-
-  const handleExport = () => {
-    const csvContent = "data:text/csv;charset=utf-8,Time(s),Strain(h)\n" 
-        + strainHistory.map(e => `${e.t.toFixed(4)},${e.h.toExponential(4)}`).join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "gravitational_wave_data.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleRemoveBH = (id: number) => {
+      if (bhs.length <= 1) return;
+      setBhs(prev => prev.filter(bh => bh.id !== id));
   };
 
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
-    const summary = `Black Hole Merger: Mass Ratio=${massRatio}, Spin=${spin}, Initial Dist=${distance}, Chirp Signal Observed. Energy radiated via GW.`;
-    const result = await analyzeExperimentData("Black Hole Merger", { massRatio, spin, distance }, summary, lang);
+    const summary = `Black Hole Merger: Bodies=${bhs.length}, SpinTilt used=${bhs.some(b => b.spinTilt > 0)}, Mass Loss=${(finalBHMassLoss * 100).toFixed(2)}%, Kick=${recoilVelocity}`;
+    const result = await analyzeExperimentData("Black Hole Merger", { bhsCount: bhs.length, finalBHMassLoss }, summary, lang);
     setAiAnalysis(result);
     setIsAnalyzing(false);
   };
 
   return (
-    <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 overflow-hidden">
-      <div className="lg:col-span-3 bg-lab-card border border-slate-700 rounded-2xl p-4 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
-         <div className="flex items-center gap-2 text-slate-300 font-bold border-b border-slate-700 pb-2">
-            <Settings size={20} /> {t('System Parameters', 'Tham Số Hệ Thống')}
-         </div>
-         
-         <div className="space-y-6">
-            <div>
-               <label className="text-sm text-slate-400">{t('Mass Ratio (M1/M2)', 'Tỷ Lệ Khối Lượng')} ({massRatio})</label>
-               <input type="range" min="0.5" max="2" step="0.1" value={massRatio} onChange={(e) => setMassRatio(Number(e.target.value))} className="w-full h-2 bg-slate-700 rounded-lg accent-orange-500" />
-            </div>
+    <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 overflow-hidden bg-slate-900 text-slate-100">
+      
+      {/* CỘT THAM SỐ (LEFT PANEL) */}
+      <div className="lg:col-span-3 bg-slate-800 border border-slate-700 rounded-2xl p-4 flex flex-col gap-4 overflow-y-auto custom-scrollbar">
+          
+          <div className="flex items-center gap-2 text-slate-300 font-bold border-b border-slate-700 pb-2 flex-shrink-0">
+            <Settings size={20} className="text-orange-500" /> Cấu Hình Hệ Thống Hố Đen
+          </div>
+          
+          {/* Điều khiển đa thể */}
+          <div className="flex justify-between items-center pb-2 border-b border-slate-700 flex-shrink-0">
+              <h3 className="text-sm font-semibold text-slate-400">Hố Đen ({bhs.length}/3)</h3>
+              <div className="flex gap-2">
+                  <button onClick={handleAddBH} disabled={bhs.length >= 3} className="p-1 bg-green-600 rounded-lg hover:bg-green-500 disabled:opacity-50 transition-colors" title="Thêm Hố Đen"><Plus size={14}/></button>
+              </div>
+          </div>
+          
+          {/* Danh sách Hố Đen */}
+          <div className="space-y-4 flex-grow overflow-y-auto pr-1 custom-scrollbar">
+              {bhs.map((bh, index) => (
+                  <div key={bh.id} className={`p-3 rounded-xl border-l-4 ${bh.color === '#f59e0b' ? 'border-orange-500' : bh.color === '#06b6d4' ? 'border-sky-500' : 'border-amber-500'} bg-slate-900 shadow-md`}>
+                      <div className="flex justify-between items-center mb-2">
+                          <span className="font-bold text-sm text-white">Hố Đen {index + 1}</span>
+                          <button onClick={() => handleRemoveBH(bh.id)} disabled={bhs.length <= 1} className="text-red-500 hover:text-red-400 disabled:opacity-30"><X size={14}/></button>
+                      </div>
 
-            <div>
-               <label className="text-sm text-slate-400">{t('Spin Parameter (a)', 'Tham Số Quay')} ({spin})</label>
-               <input type="range" min="-0.9" max="0.9" step="0.1" value={spin} onChange={(e) => setSpin(Number(e.target.value))} className="w-full h-2 bg-slate-700 rounded-lg accent-cyan-500" />
-               <p className="text-[10px] text-slate-500 mt-1">{t('Affects merger time and ISCO radius', 'Ảnh hưởng thời gian hợp nhất và bán kính ISCO')}</p>
-            </div>
-            
-            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
-               <div className="flex justify-between items-center mb-2">
-                   <div className="text-xs text-slate-500 uppercase flex items-center gap-2">
-                       <Activity size={12} /> {t('Strain Plot', 'Biểu Đồ Sóng')} h(t)
-                   </div>
-                   <button onClick={handleExport} className="text-[10px] flex items-center gap-1 text-blue-400 hover:text-blue-300">
-                       <Download size={10} /> CSV
-                   </button>
-               </div>
-               <canvas ref={plotRef} width={250} height={80} className="w-full h-20 bg-slate-900 rounded border border-slate-700"></canvas>
-            </div>
+                      {/* Control: Mass */}
+                      <div>
+                         <label className="text-xs text-slate-400 block mb-1">Khối lượng ({bh.mass.toFixed(1)} M☉)</label>
+                         <input type="range" min="0.5" max="3" step="0.1" value={bh.mass} onChange={(e) => handleUpdateBH(bh.id, 'mass', Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-orange-500 cursor-pointer" />
+                      </div>
+                      
+                      {/* Control: Spin */}
+                      <div className="mt-2">
+                         <label className="text-xs text-slate-400 block mb-1">Tham số Quay (a) ({bh.spin.toFixed(2)})</label>
+                         <input type="range" min="0" max="0.99" step="0.01" value={bh.spin} onChange={(e) => handleUpdateBH(bh.id, 'spin', Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-teal-500 cursor-pointer" />
+                      </div>
+                      
+                      {/* Control: Spin Tilt Angle */}
+                      <div className="mt-2">
+                         <label className="text-xs text-slate-400 block mb-1">Góc Spin (Độ nghiêng) ({bh.spinTilt}°)</label>
+                         <input type="range" min="0" max="90" step="5" value={bh.spinTilt} onChange={(e) => handleUpdateBH(bh.id, 'spinTilt', Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-lg accent-purple-500 cursor-pointer" />
+                         <p className='text-xs text-purple-400 italic'>Góc nghiêng khác 0 $\rightarrow$ Phát xạ Sóng Hấp dẫn không đối xứng (Kick).</p>
+                      </div>
+                  </div>
+              ))}
+          </div>
 
-            <div className="flex gap-2">
-                 <button onClick={() => setIsRunning(!isRunning)} className="flex-1 bg-orange-600 hover:bg-orange-500 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2 transition-colors">
-                    {isRunning ? <Pause size={16}/> : <Play size={16}/>} {isRunning ? t('Pause', 'Dừng') : t('Simulate', 'Mô Phỏng')}
-                 </button>
-                 <button onClick={() => { setTime(0); setStrainHistory([]); }} className="p-2 bg-slate-700 rounded-xl hover:bg-slate-600 text-white"><RotateCcw size={16}/></button>
-            </div>
-         </div>
+          {/* Công cụ Phân tích Kết quả Cuối cùng */}
+          <div className="p-3 bg-slate-700 rounded-xl shadow-lg border-l-4 border-red-500 flex-shrink-0">
+             <p className="text-sm font-bold text-white mb-1"><Share2 size={14} className='inline mr-1'/> Kết Quả Hợp Nhất</p>
+             <p className='text-xs text-slate-300'>Mất Khối lượng (Năng lượng $\gamma$): <span className='text-red-400 font-mono'>{(finalBHMassLoss * 100).toFixed(2)}%</span></p>
+             <p className='text-xs text-slate-300'>Vận tốc Giật lùi (Kick): <span className='text-yellow-400 font-mono'>{recoilVelocity.toFixed(0)} km/s</span></p>
+          </div>
 
-         <div className="pt-4 border-t border-slate-700 mt-auto">
-             {aiAnalysis ? (
-                <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-3 text-sm text-slate-200 relative animate-in slide-in-from-bottom-2 flex flex-col shadow-lg">
-                  <div className="flex justify-between items-start mb-2 sticky top-0 bg-transparent">
+          <div className="pt-4 border-t border-slate-700 mt-auto flex flex-col gap-4">
+            {aiAnalysis ? (
+                <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-3 text-sm text-slate-200 relative animate-in slide-in-from-bottom-2 flex flex-col">
+                  <div className="flex justify-between items-start mb-2 sticky top-0">
                      <div className="flex items-center gap-2 text-purple-400 text-xs font-bold"><Sparkles size={12}/> AI Analysis</div>
                      <button onClick={() => setAiAnalysis('')} className="text-slate-500 hover:text-white p-1 rounded hover:bg-white/10 transition-colors"><X size={14}/></button>
                   </div>
                   <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                     <React.Fragment>
-                         <p className="whitespace-pre-wrap text-xs leading-relaxed">{aiAnalysis}</p>
-                     </React.Fragment>
+                     <p className="whitespace-pre-wrap text-xs leading-relaxed">{aiAnalysis}</p>
                   </div>
                 </div>
               ) : (
@@ -294,29 +380,66 @@ export const BlackHoleLab: React.FC<BlackHoleLabProps> = ({ lang }) => {
                   className="w-full py-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 rounded-xl text-slate-300 font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {isAnalyzing ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
-                  {t('Explain Gravity', 'Giải Thích Hấp Dẫn')}
+                  Phân Tích AI
                 </button>
               )}
+          
+            {/* Điều khiển Mô phỏng */}
+            <div className="flex gap-2 flex-shrink-0">
+                <button onClick={() => setIsRunning(!isRunning)} className="flex-1 bg-orange-600 hover:bg-orange-500 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50" disabled={time > mergerTime + 3 || bhs.length < 2}>
+                    {isRunning ? <Pause size={16}/> : <Play size={16}/>} {isRunning ? 'Dừng' : 'Mô Phỏng'}
+                </button>
+                <button onClick={handleReset} className="p-2 bg-slate-700 rounded-xl hover:bg-slate-600 text-white transition-colors" title="Thiết Lập Lại Mô Phỏng"><RotateCcw size={16}/></button>
             </div>
+          </div>
       </div>
 
-      <div className="lg:col-span-9 bg-black rounded-xl border border-slate-700 overflow-hidden relative">
-         <canvas ref={canvasRef} width={800} height={500} className="w-full h-full object-contain" />
-         <div className="absolute top-4 left-4 flex flex-col gap-1">
-            <div className="text-xs font-mono text-orange-500 flex items-center gap-2">
-               <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-               LIGO DETECTOR FEED // LIVE
-            </div>
-            <div className="text-[10px] text-slate-500 font-mono">
-               Relativistic Simulation Engine Active
-            </div>
-         </div>
-         {time > mergerTime && (
-            <div className="absolute bottom-4 right-4 text-right">
-                <div className="text-xs text-slate-400 font-mono">POST-MERGER ANALYSIS</div>
-                <div className="text-2xl font-bold text-white">{(1 + massRatio*0.95).toFixed(2)} M☉</div>
-            </div>
-         )}
+      {/* CỘT MÔ PHỎNG VÀ LOG (RIGHT PANEL) */}
+      <div className="lg:col-span-9 flex flex-col gap-4">
+          
+          {/* Simulation Canvas */}
+          <div className="flex-1 bg-black rounded-xl border border-slate-700 overflow-hidden relative shadow-2xl min-h-[300px]">
+              <canvas ref={canvasRef} width={800} height={500} className="w-full h-full object-contain" />
+              <div className="absolute top-4 left-4 flex flex-col gap-1">
+                 <div className="text-xs font-mono text-orange-500 flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${isRunning ? 'bg-red-500 animate-pulse' : 'bg-gray-500'}`}></span>
+                    HỆ ĐA THỂ GR // T: {time.toFixed(2)}s
+                 </div>
+                 <div className="text-[10px] text-slate-500 font-mono">
+                    Độ Cong Không-Thời gian: {calculateGravitationalWaveStrain(time, bhs, mergerTime, bhs.some(bh => bh.spinTilt > 0) ? 0.5 : 0).toExponential(4)}
+                 </div>
+              </div>
+          </div>
+          
+          {/* EVENT LOG & GW SPECTRUM */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-shrink-0 min-h-[120px]">
+              {/* Event Log */}
+              <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg flex flex-col">
+                  <div className="flex items-center gap-2 text-slate-300 font-bold border-b border-slate-700 pb-2 mb-2"><Zap size={16} className="text-yellow-400"/> Nhật Ký Sự Kiện Hợp Nhất</div>
+                  <div className="space-y-1 text-xs max-h-24 overflow-y-auto custom-scrollbar">
+                      {eventLog.length === 0 ? (
+                          <p className="text-slate-500 italic">Đang chờ mô phỏng khởi động...</p>
+                      ) : (
+                          eventLog.slice().reverse().map((event, index) => (
+                              <div key={index} className="flex items-start text-slate-300">
+                                  <span className="font-mono text-[10px] text-yellow-500 w-10 shrink-0">[{event.time.toFixed(2)}s]</span>
+                                  <span className="ml-2">{event.description}</span>
+                              </div>
+                          ))
+                      )}
+                  </div>
+              </div>
+
+              {/* GW Spectrum Plot */}
+              <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg">
+                 <div className="text-xs text-slate-500 uppercase flex justify-between items-center">
+                     <span>Phổ Tín Hiệu Sóng Hấp Dẫn (Strain h)</span>
+                 </div>
+                 <div className="h-24 mt-2 relative">
+                    <canvas ref={plotCanvasRef} width={250} height={96} className="w-full h-full"></canvas>
+                 </div>
+              </div>
+          </div>
       </div>
     </div>
   );
