@@ -155,9 +155,9 @@ export const MouldLab: React.FC<MouldLabProps> = ({ lang }) => {
                       {isAnalyzing ? <Loader2 className="animate-spin" size={14}/> : <Sparkles size={14}/>} AI Analysis
                    </button>
                 ) : (
-                    <div className="bg-indigo-900/30 p-2 rounded border border-indigo-500/30 text-xs relative mt-2">
+                    <div className="bg-indigo-900/30 p-2 rounded border border-indigo-500/30 text-xs relative mt-2 max-h-60 overflow-y-auto custom-scrollbar">
                        <button onClick={() => setAiAnalysis('')} className="absolute top-1 right-1"><X size={12}/></button>
-                       {aiAnalysis}
+                       <p className="whitespace-pre-wrap">{aiAnalysis}</p>
                     </div>
                 )}
             </div>

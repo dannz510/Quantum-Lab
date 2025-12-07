@@ -434,7 +434,7 @@ export const PendulumLab: React.FC<PendulumLabProps> = ({ lang }) => {
                      <div className="flex items-center gap-2 text-purple-400 text-xs font-bold"><Sparkles size={12}/> AI Insight</div>
                      <button onClick={() => setAiAnalysis('')} className="text-slate-500 hover:text-white transition-colors"><X size={14}/></button>
                   </div>
-                  <div className="max-h-32 overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                      <p className="whitespace-pre-wrap text-xs leading-relaxed">{aiAnalysis}</p>
                   </div>
                 </div>

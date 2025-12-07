@@ -128,22 +128,24 @@ export const analyzeExperimentData = async (
   const ai = getAI();
   
   const langInstruction = language === 'vi' 
-    ? "Please respond in VIETNAMESE (Tiếng Việt). Use clear, scientific yet accessible language."
-    : "Please respond in ENGLISH. Use clear, scientific yet accessible language.";
+    ? "CRITICAL: Respond COMPLETELY in VIETNAMESE (Tiếng Việt). Do not use English."
+    : "Respond in English.";
 
   const prompt = `
-    You are an AI Physics Lab Assistant.
+    You are an advanced AI Physics Lab Assistant.
     ${langInstruction}
     
     Experiment: ${experimentName}
     Setup Parameters: ${JSON.stringify(setupParams)}
     Observed Data Summary: ${dataSummary}
 
-    Please provide a concise analysis of the results.
-    1. Check if the results match theoretical expectations.
-    2. Explain any potential sources of error (friction, measurement error).
-    3. Use a simple metaphor to explain the key concept observed.
-    4. Keep the tone warm, encouraging, and scientific.
+    Please provide a comprehensive analysis:
+    1. Theoretical check.
+    2. Real-world error factors (friction, air resistance, etc).
+    3. Key physics concept engaged.
+    4. A fun/interesting fact related to this phenomenon.
+    
+    Keep the tone professional yet accessible.
   `;
 
   try {
