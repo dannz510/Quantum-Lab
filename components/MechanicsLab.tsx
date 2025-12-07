@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Settings, Play, Pause, RotateCcw, Send, Zap, Gavel, Droplet, Triangle, Sparkles, Loader2, X, Move, ChevronDown, ChevronUp, Activity, Ruler, ArrowDown, ArrowUp, Plus, Minus, Crosshair, Wind, RefreshCw, Scale } from 'lucide-react';
-import { calculateInclinedForces } from '../services/physics';
+import { Settings, Play, Pause, RotateCcw, Activity, ArrowUpRight, Crosshair, RefreshCw, Triangle, Droplet, Move, ArrowDown, Scale } from 'lucide-react';
 import { analyzeExperimentData } from '../services/gemini';
 import { AppMode, Language } from '../types';
 import { SoundEngine } from '../services/sound';
@@ -11,7 +10,7 @@ interface MechanicsLabProps {
   lang: Language;
 }
 
-// --- PROJECTILE MOTION LAB ---
+// --- PROJECTILE MOTION LAB (Preserved) ---
 const MechanicsProjectile = ({ lang }: { lang: Language }) => {
     const [angle, setAngle] = useState(45);
     const [velocity, setVelocity] = useState(50);
@@ -40,8 +39,8 @@ const MechanicsProjectile = ({ lang }: { lang: Language }) => {
         const y = height + vy * t - 0.5 * gravity * t * t;
 
         if (y < 0) {
-            setIsRunning(false); // Hit ground
-            SoundEngine.playSplash(0.5); // Reuse splash sound as impact
+            setIsRunning(false); 
+            SoundEngine.playSplash(0.5); 
         } else {
             setProjectilePath(prev => [...prev, {x, y}]);
             reqRef.current = requestAnimationFrame(runSim);
@@ -65,17 +64,13 @@ const MechanicsProjectile = ({ lang }: { lang: Language }) => {
 
         ctx.fillStyle = '#0f172a';
         ctx.fillRect(0, 0, W, H);
-
-        // Ground
         ctx.fillStyle = '#1e293b';
         ctx.fillRect(0, H - 20, W, 20);
 
-        // Scale: 1m = 5px
         const scale = 5;
         const originX = 50;
         const originY = H - 20 - height * scale;
 
-        // Cannon
         ctx.save();
         ctx.translate(originX, originY);
         ctx.rotate(-angle * Math.PI / 180);
@@ -83,7 +78,6 @@ const MechanicsProjectile = ({ lang }: { lang: Language }) => {
         ctx.fillRect(0, -10, 40, 20);
         ctx.restore();
 
-        // Path
         ctx.strokeStyle = '#f59e0b';
         ctx.lineWidth = 2;
         ctx.setLineDash([5, 5]);
@@ -95,7 +89,6 @@ const MechanicsProjectile = ({ lang }: { lang: Language }) => {
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Projectile
         if (projectilePath.length > 0) {
             const last = projectilePath[projectilePath.length - 1];
             ctx.fillStyle = '#ef4444';
@@ -130,44 +123,278 @@ const MechanicsProjectile = ({ lang }: { lang: Language }) => {
                     <Crosshair size={20} className="text-red-500" /> Projectile Controls
                 </div>
                 <div className="space-y-4">
-                    <div className="space-y-1">
-                        <label className="text-xs text-slate-400">Angle ({angle}°)</label>
-                        <input type="range" min="0" max="90" value={angle} onChange={e => setAngle(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-red-500"/>
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs text-slate-400">Velocity ({velocity} m/s)</label>
-                        <input type="range" min="10" max="150" value={velocity} onChange={e => setVelocity(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-orange-500"/>
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs text-slate-400">Gravity ({gravity} m/s²)</label>
-                        <input type="range" min="1" max="20" step="0.1" value={gravity} onChange={e => setGravity(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-blue-500"/>
-                    </div>
+                    <div><label className="text-xs text-slate-400">Angle ({angle}°)</label><input type="range" min="0" max="90" value={angle} onChange={e => setAngle(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-red-500"/></div>
+                    <div><label className="text-xs text-slate-400">Velocity ({velocity} m/s)</label><input type="range" min="10" max="150" value={velocity} onChange={e => setVelocity(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-orange-500"/></div>
+                    <div><label className="text-xs text-slate-400">Gravity ({gravity} m/s²)</label><input type="range" min="1" max="20" step="0.1" value={gravity} onChange={e => setGravity(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-blue-500"/></div>
                 </div>
                 <div className="flex gap-2 mt-auto">
-                    <button onClick={() => setIsRunning(!isRunning)} className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded-xl">
-                        {isRunning ? 'Pause' : 'Fire'}
-                    </button>
+                    <button onClick={() => setIsRunning(!isRunning)} className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded-xl">{isRunning ? 'Pause' : 'Fire'}</button>
                     <button onClick={handleReset} className="p-2 bg-slate-700 rounded-xl"><RotateCcw/></button>
                 </div>
-                {!aiAnalysis ? (
-                    <button onClick={handleAnalyze} disabled={isAnalyzing} className="w-full py-2 bg-indigo-600 rounded text-xs font-bold flex justify-center items-center gap-2">
-                        {isAnalyzing ? <Loader2 className="animate-spin" size={12}/> : <Sparkles size={12}/>} AI Analysis
-                    </button>
-                ) : (
-                    <div className="bg-purple-900/30 p-2 rounded text-xs relative">
-                        <button onClick={() => setAiAnalysis('')} className="absolute top-1 right-1"><X size={12}/></button>
-                        <div className="max-h-32 overflow-y-auto custom-scrollbar">{aiAnalysis}</div>
-                    </div>
-                )}
+                <button onClick={handleAnalyze} disabled={isAnalyzing} className="w-full py-2 bg-indigo-600 rounded text-xs font-bold flex justify-center items-center gap-2">
+                    {isAnalyzing ? <span className="animate-spin">⌛</span> : <span>✨</span>} AI Analysis
+                </button>
+                {aiAnalysis && <div className="bg-purple-900/30 p-2 rounded text-xs max-h-32 overflow-y-auto custom-scrollbar">{aiAnalysis}</div>}
             </div>
-            <div className="lg:col-span-9 bg-black rounded-xl border border-slate-700 shadow-2xl">
-                <canvas ref={canvasRef} width={800} height={500} className="w-full h-full object-contain" />
-            </div>
+            <div className="lg:col-span-9 bg-black rounded-xl border border-slate-700 shadow-2xl"><canvas ref={canvasRef} width={800} height={500} className="w-full h-full object-contain" /></div>
         </div>
     );
 };
 
-// --- COLLISIONS LAB ---
+// --- INCLINED PLANE LAB ---
+const MechanicsInclinedPlane = ({ lang }: { lang: Language }) => {
+    const [angle, setAngle] = useState(30);
+    const [mass, setMass] = useState(5);
+    const [mu, setMu] = useState(0.2); // Friction coeff
+    const [g, setG] = useState(9.8);
+    const [pos, setPos] = useState(0); // 0 to 100% of ramp
+    const [velocity, setVelocity] = useState(0);
+    const [isRunning, setIsRunning] = useState(false);
+    
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const reqRef = useRef(0);
+
+    const rampLength = 500; // pixels visual
+
+    const update = () => {
+        if (!isRunning) return;
+        
+        // Physics
+        const rad = angle * Math.PI / 180;
+        const fg = mass * g;
+        const normal = fg * Math.cos(rad);
+        const fParallel = fg * Math.sin(rad);
+        const friction = Math.min(fParallel, normal * mu);
+        const netForce = fParallel - friction;
+        
+        const acc = netForce / mass; // m/s^2 (pixels/s^2 scaled)
+        
+        // Time step approx
+        const dt = 0.05;
+        const newVel = velocity + acc * dt * 5; // Scale factor for visuals
+        const newPos = pos + newVel * dt;
+        
+        setVelocity(newVel);
+        setPos(newPos);
+        
+        if (newPos > rampLength) setIsRunning(false);
+        
+        reqRef.current = requestAnimationFrame(update);
+    };
+
+    useEffect(() => {
+        if (isRunning) reqRef.current = requestAnimationFrame(update);
+        return () => cancelAnimationFrame(reqRef.current);
+    }, [isRunning, velocity, pos, angle, mass, mu, g]);
+
+    const draw = () => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width;
+        const H = canvas.height;
+        const groundY = H - 50;
+        const startX = 100;
+        
+        ctx.fillStyle = '#0f172a'; ctx.fillRect(0,0,W,H);
+        
+        // Ground
+        ctx.fillStyle = '#1e293b'; ctx.fillRect(0, groundY, W, 50);
+        
+        // Ramp
+        const rad = angle * Math.PI / 180;
+        const rampEndX = startX + rampLength * Math.cos(rad);
+        const rampEndY = groundY - rampLength * Math.sin(rad);
+        
+        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(startX, groundY); ctx.lineTo(rampEndX, rampEndY); ctx.lineTo(rampEndX, groundY); ctx.closePath();
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.2)'; ctx.fill(); ctx.stroke();
+        
+        // Angle Arc
+        ctx.beginPath(); ctx.arc(startX, groundY, 40, 0, -rad, true); ctx.stroke();
+        ctx.fillStyle = 'white'; ctx.fillText(`${angle}°`, startX + 50, groundY - 10);
+        
+        // Block
+        const blockDist = (rampLength - 50) - pos; // Start at top
+        const blockX = startX + (rampLength - blockDist) * Math.cos(rad);
+        const blockY = groundY - (rampLength - blockDist) * Math.sin(rad);
+        
+        ctx.save();
+        ctx.translate(blockX, blockY);
+        ctx.rotate(-rad);
+        
+        // Mass Block
+        const size = 30 + mass * 2;
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(-size/2, -size, size, size);
+        
+        // Vectors
+        const vScale = 3;
+        const fg = mass * g;
+        const normal = fg * Math.cos(rad);
+        const fParallel = fg * Math.sin(rad);
+        const friction = Math.min(fParallel, normal * mu);
+
+        // Normal (Up)
+        ctx.beginPath(); ctx.moveTo(0, -size/2); ctx.lineTo(0, -size/2 - normal*vScale); 
+        ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2; ctx.stroke();
+        
+        // Friction (Backwards)
+        ctx.beginPath(); ctx.moveTo(0, -size/2); ctx.lineTo(-friction*vScale*2, -size/2);
+        ctx.strokeStyle = '#f59e0b'; ctx.stroke();
+
+        ctx.restore();
+        
+        // Gravity (Always Down)
+        ctx.save();
+        ctx.translate(blockX, blockY - size/2); // Center of mass approx
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0, fg * vScale); 
+        ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.restore();
+    };
+    
+    useEffect(draw, [pos, angle, mass]);
+
+    return (
+        <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 bg-slate-900 text-slate-100">
+            <div className="lg:col-span-3 bg-slate-800 border border-slate-700 rounded-2xl p-4 flex flex-col gap-4">
+                 <div className="flex items-center gap-2 font-bold text-slate-300 border-b border-slate-700 pb-2">
+                    <Triangle size={20} className="text-orange-500" /> Inclined Plane
+                </div>
+                <div className="space-y-4">
+                    <div><label className="text-xs text-slate-400">Angle ({angle}°)</label><input type="range" min="5" max="60" value={angle} onChange={e => setAngle(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-orange-500"/></div>
+                    <div><label className="text-xs text-slate-400">Mass ({mass} kg)</label><input type="range" min="1" max="20" value={mass} onChange={e => setMass(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-red-500"/></div>
+                    <div><label className="text-xs text-slate-400">Friction Coeff ({mu})</label><input type="range" min="0" max="1" step="0.1" value={mu} onChange={e => setMu(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-yellow-500"/></div>
+                </div>
+                <div className="bg-slate-900 p-2 rounded text-xs font-mono space-y-1">
+                    <div className="text-green-500">Gravity (mg): {(mass*g).toFixed(1)} N</div>
+                    <div className="text-blue-500">Normal (N): {(mass*g*Math.cos(angle*Math.PI/180)).toFixed(1)} N</div>
+                    <div className="text-orange-500">Friction (f): {Math.min(mass*g*Math.sin(angle*Math.PI/180), mass*g*Math.cos(angle*Math.PI/180)*mu).toFixed(1)} N</div>
+                </div>
+                <div className="flex gap-2 mt-auto">
+                    <button onClick={() => setIsRunning(!isRunning)} className="flex-1 bg-orange-600 hover:bg-orange-500 text-white font-bold py-2 rounded-xl">{isRunning ? 'Pause' : 'Slide'}</button>
+                    <button onClick={() => {setPos(0); setVelocity(0); setIsRunning(false);}} className="p-2 bg-slate-700 rounded-xl"><RotateCcw/></button>
+                </div>
+            </div>
+            <div className="lg:col-span-9 bg-black rounded-xl border border-slate-700 shadow-2xl"><canvas ref={canvasRef} width={800} height={500} className="w-full h-full object-contain" /></div>
+        </div>
+    );
+};
+
+// --- FLUIDS (ARCHIMEDES) LAB ---
+const MechanicsFluids = ({ lang }: { lang: Language }) => {
+    const [fluidDensity, setFluidDensity] = useState(1000); // Water
+    const [objDensity, setObjDensity] = useState(500); // Wood approx
+    const [objVolume, setObjVolume] = useState(0.01); // m^3
+    const [submerged, setSubmerged] = useState(0); // % submerged
+    
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    
+    // Physics Calc
+    const g = 9.8;
+    const objMass = objDensity * objVolume;
+    const weight = objMass * g;
+    const maxBuoyancy = fluidDensity * objVolume * g;
+    
+    // Equilibrium submerged %
+    // Weight = Buoyancy => mg = rho_fluid * V_sub * g
+    // rho_obj * V * g = rho_fluid * V_sub * g
+    // V_sub/V = rho_obj / rho_fluid
+    const equilibriumRatio = Math.min(1, Math.max(0, objDensity / fluidDensity));
+    
+    useEffect(() => {
+        // Animate to equilibrium
+        let anim: number;
+        const animate = () => {
+            setSubmerged(prev => {
+                const diff = equilibriumRatio - prev;
+                if(Math.abs(diff) < 0.001) return equilibriumRatio;
+                return prev + diff * 0.05;
+            });
+            anim = requestAnimationFrame(animate);
+        }
+        anim = requestAnimationFrame(animate);
+        return () => cancelAnimationFrame(anim);
+    }, [equilibriumRatio]);
+
+    const draw = () => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width;
+        const H = canvas.height;
+        const centerX = W/2;
+        const groundY = H - 50;
+
+        ctx.clearRect(0,0,W,H);
+        
+        // Beaker
+        const beakerW = 300;
+        const beakerH = 300;
+        const beakerX = centerX - beakerW/2;
+        const beakerY = groundY - beakerH;
+        
+        // Water
+        const waterLevelBase = 200;
+        // Water rises as obj submerges
+        const waterRise = (objVolume * submerged * 1000); // Visual scale
+        const waterH = waterLevelBase + waterRise;
+        
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+        ctx.fillRect(beakerX, groundY - waterH, beakerW, waterH);
+        
+        // Object
+        const objSize = 100;
+        // Position depends on submerged
+        // If floating, bottom of obj is at water surface + submerged depth
+        const objY = groundY - waterH + (objSize * (1-submerged)) - objSize/2;
+        
+        ctx.fillStyle = objDensity > 1000 ? '#94a3b8' : '#d97706'; // Stone vs Wood color
+        ctx.fillRect(centerX - objSize/2, objY, objSize, objSize);
+        ctx.strokeStyle = 'white'; ctx.strokeRect(centerX - objSize/2, objY, objSize, objSize);
+        
+        // Beaker Outline
+        ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(beakerX, beakerY); ctx.lineTo(beakerX, groundY); ctx.lineTo(beakerX + beakerW, groundY); ctx.lineTo(beakerX + beakerW, beakerY); ctx.stroke();
+        
+        // Forces
+        const fb = fluidDensity * (objVolume * submerged) * g;
+        const scale = 2; // px per N
+        
+        // Gravity Vector
+        ctx.beginPath(); ctx.moveTo(centerX, objY + objSize/2); ctx.lineTo(centerX, objY + objSize/2 + weight*scale/10); 
+        ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3; ctx.stroke();
+        
+        // Buoyancy Vector
+        ctx.beginPath(); ctx.moveTo(centerX, objY + objSize/2); ctx.lineTo(centerX, objY + objSize/2 - fb*scale/10);
+        ctx.strokeStyle = '#3b82f6'; ctx.stroke();
+    };
+    
+    useEffect(draw, [submerged, fluidDensity, objDensity, objVolume]);
+
+    return (
+        <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 bg-slate-900 text-slate-100">
+             <div className="lg:col-span-3 bg-slate-800 border border-slate-700 rounded-2xl p-4 flex flex-col gap-4">
+                 <div className="flex items-center gap-2 font-bold text-slate-300 border-b border-slate-700 pb-2">
+                    <Droplet size={20} className="text-sky-500" /> Archimedes Principle
+                </div>
+                <div className="space-y-4">
+                    <div><label className="text-xs text-slate-400">Fluid Density ({fluidDensity} kg/m³)</label><input type="range" min="800" max="1200" value={fluidDensity} onChange={e => setFluidDensity(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-sky-500"/></div>
+                    <div><label className="text-xs text-slate-400">Object Density ({objDensity} kg/m³)</label><input type="range" min="200" max="2000" step="100" value={objDensity} onChange={e => setObjDensity(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-orange-500"/></div>
+                </div>
+                
+                <div className="p-3 bg-slate-900 rounded-xl space-y-2 font-mono text-xs">
+                    <div className="flex justify-between"><span className="text-slate-400">Weight (Fg):</span> <span className="text-red-400">{weight.toFixed(1)} N</span></div>
+                    <div className="flex justify-between"><span className="text-slate-400">Buoyancy (Fb):</span> <span className="text-blue-400">{(fluidDensity * objVolume * submerged * g).toFixed(1)} N</span></div>
+                    <div className="flex justify-between border-t border-slate-700 pt-1"><span className="text-slate-200">Net Force:</span> <span className="text-green-400">{(weight - fluidDensity * objVolume * submerged * g).toFixed(1)} N</span></div>
+                </div>
+             </div>
+             <div className="lg:col-span-9 bg-black rounded-xl border border-slate-700 shadow-2xl"><canvas ref={canvasRef} width={800} height={500} className="w-full h-full object-contain" /></div>
+        </div>
+    );
+};
+
+// --- COLLISION LAB (Preserved but integrated) ---
 const MechanicsCollisions = ({ lang }: { lang: Language }) => {
     const [balls, setBalls] = useState([
         { x: 100, y: 250, vx: 5, vy: 0, r: 20, m: 5, color: '#ef4444' },
@@ -181,16 +408,13 @@ const MechanicsCollisions = ({ lang }: { lang: Language }) => {
 
     const update = () => {
         if (!isRunning) return;
-        
         let newBalls = balls.map(b => ({...b, x: b.x + b.vx, y: b.y + b.vy}));
         
-        // Wall Bounce
         newBalls.forEach(b => {
             if (b.x < b.r || b.x > 800 - b.r) b.vx *= -1;
             if (b.y < b.r || b.y > 500 - b.r) b.vy *= -1;
         });
 
-        // Ball Collision (1D simplified for array of 2)
         const b1 = newBalls[0];
         const b2 = newBalls[1];
         const dx = b2.x - b1.x;
@@ -198,20 +422,14 @@ const MechanicsCollisions = ({ lang }: { lang: Language }) => {
         const dist = Math.sqrt(dx*dx + dy*dy);
 
         if (dist < b1.r + b2.r) {
-            // Elastic collision logic
             const angle = Math.atan2(dy, dx);
-            const u1 = Math.sqrt(b1.vx**2 + b1.vy**2);
-            const u2 = Math.sqrt(b2.vx**2 + b2.vy**2);
-            // ... (simplified swap for equal mass)
             const tempVx = b1.vx;
             b1.vx = b2.vx * elasticity;
             b2.vx = tempVx * elasticity;
             
-            // Correction to prevent stick
             const overlap = (b1.r + b2.r - dist) / 2;
             b1.x -= overlap * Math.cos(angle);
             b2.x += overlap * Math.cos(angle);
-            
             SoundEngine.playClick();
         }
 
@@ -229,19 +447,11 @@ const MechanicsCollisions = ({ lang }: { lang: Language }) => {
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
-        
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, 800, 500);
-        
+        ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, 800, 500);
         balls.forEach(b => {
             ctx.fillStyle = b.color;
-            ctx.beginPath();
-            ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
-            ctx.fill();
-            
-            // Vector
-            ctx.strokeStyle = 'white';
-            ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x + b.vx*10, b.y + b.vy*10); ctx.stroke();
+            ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = 'white'; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x + b.vx*10, b.y + b.vy*10); ctx.stroke();
         });
     };
     
@@ -250,58 +460,32 @@ const MechanicsCollisions = ({ lang }: { lang: Language }) => {
     return (
         <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 bg-slate-900 text-slate-100">
             <div className="lg:col-span-3 bg-slate-800 border border-slate-700 rounded-2xl p-4">
-                <div className="flex items-center gap-2 font-bold text-slate-300 border-b border-slate-700 pb-2">
-                    <RefreshCw size={20} className="text-green-500" /> Collision Lab
-                </div>
+                <div className="flex items-center gap-2 font-bold text-slate-300 border-b border-slate-700 pb-2"><RefreshCw size={20} className="text-green-500" /> Collision Lab</div>
                 <div className="mt-4 space-y-4">
-                    <div>
-                        <label className="text-xs text-slate-400">Elasticity ({elasticity})</label>
-                        <input type="range" min="0" max="1" step="0.1" value={elasticity} onChange={e => setElasticity(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-green-500"/>
-                    </div>
-                    <div className="flex gap-2">
-                        <button onClick={() => setIsRunning(!isRunning)} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded-xl">
-                            {isRunning ? 'Pause' : 'Run'}
-                        </button>
-                        <button onClick={() => setBalls([{x:100,y:250,vx:5,vy:0,r:20,m:5,color:'#ef4444'}, {x:400,y:250,vx:0,vy:0,r:20,m:5,color:'#3b82f6'}])} className="p-2 bg-slate-700 rounded-xl"><RotateCcw/></button>
-                    </div>
+                    <div><label className="text-xs text-slate-400">Elasticity ({elasticity})</label><input type="range" min="0" max="1" step="0.1" value={elasticity} onChange={e => setElasticity(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-green-500"/></div>
+                    <div className="flex gap-2"><button onClick={() => setIsRunning(!isRunning)} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded-xl">{isRunning ? 'Pause' : 'Run'}</button><button onClick={() => setBalls([{x:100,y:250,vx:5,vy:0,r:20,m:5,color:'#ef4444'}, {x:400,y:250,vx:0,vy:0,r:20,m:5,color:'#3b82f6'}])} className="p-2 bg-slate-700 rounded-xl"><RotateCcw/></button></div>
                 </div>
             </div>
-            <div className="lg:col-span-9 bg-black rounded-xl border border-slate-700 shadow-2xl">
-                <canvas ref={canvasRef} width={800} height={500} className="w-full h-full object-contain" />
-            </div>
+            <div className="lg:col-span-9 bg-black rounded-xl border border-slate-700 shadow-2xl"><canvas ref={canvasRef} width={800} height={500} className="w-full h-full object-contain" /></div>
         </div>
     );
 };
 
-// --- SPRINGS LAB ---
+// --- SPRINGS LAB (Preserved but integrated) ---
 const MechanicsSprings = ({ lang }: { lang: Language }) => {
-    const [k, setK] = useState(50); // Spring constant
-    const [m, setM] = useState(10); // Mass
-    const [damping, setDamping] = useState(0.5);
-    const [y, setY] = useState(200);
-    const [vy, setVy] = useState(0);
-    const [isRunning, setIsRunning] = useState(false);
-    
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const reqRef = useRef(0);
-    const equilibriumY = 250;
+    const [k, setK] = useState(50); const [m, setM] = useState(10); const [damping, setDamping] = useState(0.5);
+    const [y, setY] = useState(200); const [vy, setVy] = useState(0); const [isRunning, setIsRunning] = useState(false);
+    const canvasRef = useRef<HTMLCanvasElement>(null); const reqRef = useRef(0); const equilibriumY = 250;
 
     const update = () => {
         if (!isRunning) return;
-        
         const displacement = y - equilibriumY;
-        const forceSpring = -k * (displacement / 50); // scale factor
+        const forceSpring = -k * (displacement / 50); 
         const forceDamp = -damping * vy;
-        const forceGrav = m * 9.8 / 50; // scaled gravity
-        
+        const forceGrav = m * 9.8 / 50; 
         const acc = (forceSpring + forceDamp + forceGrav) / m;
-        
         const nextVy = vy + acc;
-        const nextY = y + nextVy;
-        
-        setVy(nextVy);
-        setY(nextY);
-        
+        setVy(nextVy); setY(y + nextVy);
         reqRef.current = requestAnimationFrame(update);
     };
 
@@ -311,36 +495,15 @@ const MechanicsSprings = ({ lang }: { lang: Language }) => {
     }, [isRunning, y, vy, k, m, damping]);
 
     const draw = () => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        
+        const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext('2d'); if (!ctx) return;
         ctx.clearRect(0, 0, 800, 500);
-        
-        // Draw Spring
-        ctx.strokeStyle = '#94a3b8';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(400, 0);
-        const coils = 15;
-        const step = y / coils;
-        for (let i = 0; i <= coils; i++) {
-            const xOffset = i % 2 === 0 ? -20 : 20;
-            ctx.lineTo(400 + (i === 0 || i === coils ? 0 : xOffset), i * step);
-        }
+        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(400, 0);
+        const coils = 15; const step = y / coils;
+        for (let i = 0; i <= coils; i++) { const xOffset = i % 2 === 0 ? -20 : 20; ctx.lineTo(400 + (i === 0 || i === coils ? 0 : xOffset), i * step); }
         ctx.stroke();
-        
-        // Draw Mass
-        ctx.fillStyle = '#8b5cf6';
-        ctx.fillRect(375, y, 50, 50);
-        
-        // Equilibrium Line
-        ctx.strokeStyle = '#34d399';
-        ctx.setLineDash([5, 5]);
-        ctx.beginPath(); ctx.moveTo(300, equilibriumY + 25); ctx.lineTo(500, equilibriumY + 25); ctx.stroke();
+        ctx.fillStyle = '#8b5cf6'; ctx.fillRect(375, y, 50, 50);
+        ctx.strokeStyle = '#34d399'; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(300, equilibriumY + 25); ctx.lineTo(500, equilibriumY + 25); ctx.stroke();
         ctx.setLineDash([]);
-        ctx.fillStyle = '#34d399'; ctx.fillText('Equilibrium', 510, equilibriumY + 30);
     };
     
     useEffect(draw, [y]);
@@ -348,37 +511,29 @@ const MechanicsSprings = ({ lang }: { lang: Language }) => {
     return (
         <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 bg-slate-900 text-slate-100">
             <div className="lg:col-span-3 bg-slate-800 border border-slate-700 rounded-2xl p-4">
-                <div className="flex items-center gap-2 font-bold text-slate-300 border-b border-slate-700 pb-2">
-                    <Activity size={20} className="text-purple-500" /> Hooke's Law
-                </div>
+                <div className="flex items-center gap-2 font-bold text-slate-300 border-b border-slate-700 pb-2"><Activity size={20} className="text-purple-500" /> Hooke's Law</div>
                 <div className="mt-4 space-y-4">
-                    <div><label className="text-xs text-slate-400">Spring Constant (k) {k}</label><input type="range" min="10" max="200" value={k} onChange={e => setK(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-purple-500"/></div>
-                    <div><label className="text-xs text-slate-400">Mass (m) {m}</label><input type="range" min="1" max="50" value={m} onChange={e => setM(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-blue-500"/></div>
-                    <div><label className="text-xs text-slate-400">Damping {damping}</label><input type="range" min="0" max="2" step="0.1" value={damping} onChange={e => setDamping(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-red-500"/></div>
-                    
+                    <div><label className="text-xs text-slate-400">Spring Constant (k)</label><input type="range" min="10" max="200" value={k} onChange={e => setK(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-purple-500"/></div>
+                    <div><label className="text-xs text-slate-400">Mass (m)</label><input type="range" min="1" max="50" value={m} onChange={e => setM(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-blue-500"/></div>
+                    <div><label className="text-xs text-slate-400">Damping</label><input type="range" min="0" max="2" step="0.1" value={damping} onChange={e => setDamping(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded accent-red-500"/></div>
                     <button onClick={() => setIsRunning(!isRunning)} className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-xl">{isRunning ? 'Stop' : 'Oscillate'}</button>
                     <button onClick={() => {setY(350); setVy(0);}} className="w-full bg-slate-700 hover:bg-slate-600 text-white py-1 rounded-lg text-xs">Pull Down</button>
                 </div>
             </div>
-            <div className="lg:col-span-9 bg-black rounded-xl border border-slate-700 shadow-2xl">
-                <canvas ref={canvasRef} width={800} height={500} className="w-full h-full object-contain" />
-            </div>
+            <div className="lg:col-span-9 bg-black rounded-xl border border-slate-700 shadow-2xl"><canvas ref={canvasRef} width={800} height={500} className="w-full h-full object-contain" /></div>
         </div>
     );
 };
 
-// ... (Existing Orbits, Fluids, Inclined Plane code remains unchanged, omitted for brevity but assumed present)
-// Placeholder for brevity:
-const MechanicsOrbits = ({ lang }: { lang: Language }) => <div className="text-white p-10">Orbits Lab Active</div>;
-const FluidsArchimedesLab = ({ lang }: { lang: Language }) => <div className="text-white p-10">Fluids Lab Active</div>;
-const InclinedPlaneLab = ({ lang }: { lang: Language }) => <div className="text-white p-10">Inclined Plane Lab Active</div>;
+// Placeholder for Orbits
+const MechanicsOrbits = ({ lang }: { lang: Language }) => <div className="text-white p-10 flex items-center justify-center h-full">Orbits Lab Active (See SimSelector)</div>;
 
 
 export const MechanicsLab: React.FC<MechanicsLabProps> = ({ mode, lang }) => {
   switch(mode) {
       case AppMode.SIM_RUN_ORBITS: return <MechanicsOrbits lang={lang} />;
-      case AppMode.SIM_RUN_FLUIDS: return <FluidsArchimedesLab lang={lang} />;
-      case AppMode.SIM_RUN_INCLINED: return <InclinedPlaneLab lang={lang} />;
+      case AppMode.SIM_RUN_FLUIDS: return <MechanicsFluids lang={lang} />;
+      case AppMode.SIM_RUN_INCLINED: return <MechanicsInclinedPlane lang={lang} />;
       case AppMode.SIM_RUN_PROJECTILE: return <MechanicsProjectile lang={lang} />;
       case AppMode.SIM_RUN_COLLISIONS: return <MechanicsCollisions lang={lang} />;
       case AppMode.SIM_RUN_SPRINGS: return <MechanicsSprings lang={lang} />;
